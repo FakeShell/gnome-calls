@@ -5,6 +5,7 @@ Maintainer: DebianOnMobile Maintainers <debian-on-mobile-maintainers@alioth-list
 Uploaders:
  Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>,
  Henry-Nicolas Tourneur <debian@nilux.be>,
+ Chris Talbot <chris@talbothome.com>,
 Build-Depends:
  dbus-daemon,
  debhelper-compat (= 13),
