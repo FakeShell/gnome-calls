@@ -31,7 +31,7 @@ Build-Depends:
  libxml2-utils,
  meson,
  modemmanager-dev,
- pkg-config,
+ pkgconf,
  python3-docutils,
  valac,
  xauth <!nocheck>,
