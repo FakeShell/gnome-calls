@@ -36,7 +36,7 @@ Build-Depends:
  valac,
  xauth <!nocheck>,
  xvfb <!nocheck>,
-Standards-Version: 4.6.1
+Standards-Version: 4.6.2
 Homepage: https://gitlab.gnome.org/GNOME/calls
 Vcs-Browser: https://salsa.debian.org/DebianOnMobile-team/gnome-calls
 Vcs-Git: https://salsa.debian.org/DebianOnMobile-team/gnome-calls.git
