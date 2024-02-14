@@ -1,1 +1,3 @@
-mm-origin-Don-t-unref-origin-in-call_deleted_cb.patch
+0001-add-signal-for-main-window-hiding.patch
+0002-connect-listener-past-the-list-model-filters.patch
+0003-test-disable-sip-test.patch
