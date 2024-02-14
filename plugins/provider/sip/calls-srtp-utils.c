@@ -51,23 +51,23 @@
 /* The default used in libsrtp (and GstSrtpEnc/GstSrtpDec) */
 #define SRTP_DEFAULT_WINDOW_SIZE 128
 
-const char * srtp_crypto_suites[] = {
-  "AES_CM_128_HMAC_SHA1_32", /* RFC 4568 */
-  "AES_CM_128_HMAC_SHA1_80", /* RFC 4568 */
-  "F8_128_HMAC_SHA1_32", /* RFC 4568 but not supported by GstSrtpEnc/GstSrtpDec */
-  "AEAD_AES_128_GCM", /* RFC 7714 TODO support in the future */
-  "AEAD_AES_256_GCM", /* RFC 7714 TODO support in the future */
-  NULL
-};
-
-
 static gsize
 get_key_size_for_suite (calls_srtp_crypto_suite suite)
 {
   switch (suite) {
-  case CALLS_SRTP_SUITE_AES_128_SHA1_32:
-  case CALLS_SRTP_SUITE_AES_128_SHA1_80:
+  case CALLS_SRTP_SUITE_AES_CM_128_SHA1_32:
+  case CALLS_SRTP_SUITE_AES_CM_128_SHA1_80:
     return 30;
+  case CALLS_SRTP_SUITE_AES_192_CM_SHA1_32:
+  case CALLS_SRTP_SUITE_AES_192_CM_SHA1_80:
+    return 38;
+  case CALLS_SRTP_SUITE_AES_256_CM_SHA1_32:
+  case CALLS_SRTP_SUITE_AES_256_CM_SHA1_80:
+    return 46;
+  case CALLS_SRTP_SUITE_AEAD_AES_128_GCM:
+    return 28;
+  case CALLS_SRTP_SUITE_AEAD_AES_256_GCM:
+    return 44;
 
   case CALLS_SRTP_SUITE_UNKNOWN:
   default:
@@ -99,14 +99,8 @@ validate_crypto_attribute (calls_srtp_crypto_attribute *attr,
     return FALSE;
   }
 
-  switch (attr->crypto_suite) {
-  case CALLS_SRTP_SUITE_AES_128_SHA1_32:
-  case CALLS_SRTP_SUITE_AES_128_SHA1_80:
-    expected_key_salt_length = 30; /* 16 byte key + 14 byte salt */
-    break;
-
-  case CALLS_SRTP_SUITE_UNKNOWN:
-  default:
+  expected_key_salt_length = get_key_size_for_suite (attr->crypto_suite);
+  if (expected_key_salt_length == 0) {
     g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                  "Crypto suite unknown");
     return FALSE;
@@ -129,7 +123,7 @@ validate_crypto_attribute (calls_srtp_crypto_attribute *attr,
         expected_mki_length > 128) {
       g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED,
                    "MKI length must be between 1 and 128, got %u",
-                   expected_key_salt_length);
+                   attr->key_params[0].mki_length);
       return FALSE;
     }
   }
@@ -369,11 +363,14 @@ calls_srtp_parse_sdp_crypto_attribute (const char *attribute,
     return NULL;
   }
 
-  /* f.e. attr_fields[1] = "AES_CM_128_HMAC_SHA1_32" */
   if (g_strcmp0 (attr_fields[1], "AES_CM_128_HMAC_SHA1_32") == 0)
-    crypto_suite = CALLS_SRTP_SUITE_AES_128_SHA1_32;
+    crypto_suite = CALLS_SRTP_SUITE_AES_CM_128_SHA1_32;
   else if (g_strcmp0 (attr_fields[1], "AES_CM_128_HMAC_SHA1_80") == 0)
-    crypto_suite = CALLS_SRTP_SUITE_AES_128_SHA1_80;
+    crypto_suite = CALLS_SRTP_SUITE_AES_CM_128_SHA1_80;
+  else if (g_strcmp0 (attr_fields[1], "AES_256_CM_HMAC_SHA1_32") == 0)
+    crypto_suite = CALLS_SRTP_SUITE_AES_256_CM_SHA1_32;
+  else if (g_strcmp0 (attr_fields[1], "AES_256_CM_HMAC_SHA1_80") == 0)
+    crypto_suite = CALLS_SRTP_SUITE_AES_256_CM_SHA1_80;
   else
     crypto_suite = CALLS_SRTP_SUITE_UNKNOWN; /* error */
 
@@ -415,7 +412,20 @@ calls_srtp_parse_sdp_crypto_attribute (const char *attribute,
 
     n_key_infos = g_strv_length (key_info_fields);
 
-    key_param->b64_keysalt = g_strdup (key_info_fields[0]);
+    switch (strlen (key_info_fields[0]) % 4) {
+    case 3:
+      key_param->b64_keysalt = g_strconcat (key_info_fields[0], "=", NULL);
+      break;
+    case 2:
+      key_param->b64_keysalt = g_strconcat (key_info_fields[0], "==", NULL);
+      break;
+    case 1:
+      g_assert_not_reached (); /* impossible with base64 */
+      break;
+    case 0:
+    default:
+      key_param->b64_keysalt = g_strdup (key_info_fields[0]);
+    }
 
     if (n_key_infos == 1) {
       key_info_lifetime_index = 0;
@@ -579,10 +589,24 @@ calls_srtp_print_sdp_crypto_attribute (calls_srtp_crypto_attribute *attr,
   if (!validate_crypto_attribute (attr, error))
     return NULL;
 
-  if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_128_SHA1_32)
+  if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_CM_128_SHA1_32)
     crypto_suite = "AES_CM_128_HMAC_SHA1_32";
-  else if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_128_SHA1_80)
+  else if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_CM_128_SHA1_80)
     crypto_suite = "AES_CM_128_HMAC_SHA1_80";
+  else if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_192_CM_SHA1_32)
+    crypto_suite = "AES_196_CM_HMAC_SHA1_32";
+  else if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_192_CM_SHA1_80)
+    crypto_suite = "AES_196_CM_HMAC_SHA1_80";
+  else if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_256_CM_SHA1_32)
+    crypto_suite = "AES_256_CM_HMAC_SHA1_32";
+  else if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_256_CM_SHA1_80)
+    crypto_suite = "AES_256_CM_HMAC_SHA1_80";
+  else if (attr->crypto_suite == CALLS_SRTP_SUITE_F8_128_HMAC_SHA1_32)
+    crypto_suite = "F8_128_HMAC_SHA1_80";
+  else if (attr->crypto_suite == CALLS_SRTP_SUITE_AEAD_AES_128_GCM)
+    crypto_suite = "AEAD_AES_128_GCM";
+  else if (attr->crypto_suite == CALLS_SRTP_SUITE_AEAD_AES_256_GCM)
+    crypto_suite = "AEAD_AES_256_GCM";
   else
     return NULL;
 
@@ -594,8 +618,19 @@ calls_srtp_print_sdp_crypto_attribute (calls_srtp_crypto_attribute *attr,
   /* key parameters */
   for (guint i = 0; i < attr->n_key_params; i++) {
     calls_srtp_crypto_key_param *key_param = &attr->key_params[i];
+    int keylen = strlen (key_param->b64_keysalt);
 
-    g_string_append_printf (attr_str, "inline:%s", key_param->b64_keysalt);
+    /* https://www.rfc-editor.org/rfc/rfc4568.html#section-6.1 says:
+      When base64 decoding the key and salt, padding characters (i.e.,
+      one or two "=" at the end of the base64-encoded data) are discarded
+      (see [RFC3548] for details).
+    */
+    if (key_param->b64_keysalt[keylen - 2] == '=')
+      g_string_append_printf (attr_str, "inline:%.*s", keylen - 2, key_param->b64_keysalt);
+    else if (key_param->b64_keysalt[keylen - 1] == '=')
+      g_string_append_printf (attr_str, "inline:%.*s", keylen - 1, key_param->b64_keysalt);
+    else
+      g_string_append_printf (attr_str, "inline:%s", key_param->b64_keysalt);
     if (key_param->lifetime_type == CALLS_SRTP_LIFETIME_AS_DECIMAL_NUMBER)
       g_string_append_printf (attr_str, "|%" G_GINT64_FORMAT, key_param->lifetime);
     if (key_param->lifetime_type == CALLS_SRTP_LIFETIME_AS_POWER_OF_TWO)
@@ -711,20 +746,66 @@ calls_srtp_crypto_get_srtpdec_params (calls_srtp_crypto_attribute *attr,
 {
   g_return_val_if_fail (attr, FALSE);
 
-  if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_128_SHA1_32) {
+  if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_CM_128_SHA1_32) {
     *srtp_cipher = attr->unencrypted_srtp ? "null" : "aes-128-icm";
     *srtp_auth = attr->unauthenticated_srtp ? "null" : "hmac-sha1-32";
     *srtcp_cipher = attr->unencrypted_srtcp ? "null" : "aes-128-icm";
     *srtcp_auth = attr->unencrypted_srtcp ? "null" : "hmac-sha1-32";
 
     return TRUE;
-  } else if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_128_SHA1_80) {
+  } else if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_CM_128_SHA1_80) {
     *srtp_cipher = attr->unencrypted_srtp ? "null" : "aes-128-icm";
     *srtp_auth = attr->unauthenticated_srtp ? "null" : "hmac-sha1-80";
     *srtcp_cipher = attr->unencrypted_srtcp ? "null" : "aes-128-icm";
     *srtcp_auth = attr->unencrypted_srtcp ? "null" : "hmac-sha1-80";
 
     return TRUE;
+  }
+  if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_192_CM_SHA1_32) {
+    /* NOT OFFERED BY GSTREAMER
+    *srtp_cipher = attr->unencrypted_srtp ? "null" : "aes-192-icm";
+    *srtp_auth = attr->unauthenticated_srtp ? "null" : "hmac-sha1-32";
+    *srtcp_cipher = attr->unencrypted_srtcp ? "null" : "aes-192-icm";
+    *srtcp_auth = attr->unencrypted_srtcp ? "null" : "hmac-sha1-32";
+    */
+    return FALSE;
+  }
+  if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_192_CM_SHA1_80) {
+    /* NOT OFFERED BY GSTREAMER
+    *srtp_cipher = attr->unencrypted_srtp ? "null" : "aes-192-icm";
+    *srtp_auth = attr->unauthenticated_srtp ? "null" : "hmac-sha1-80";
+    *srtcp_cipher = attr->unencrypted_srtcp ? "null" : "aes-192-icm";
+    *srtcp_auth = attr->unencrypted_srtcp ? "null" : "hmac-sha1-80";
+    */
+    return FALSE;
+  }
+  if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_256_CM_SHA1_32) {
+    *srtp_cipher = attr->unencrypted_srtp ? "null" : "aes-256-icm";
+    *srtp_auth = attr->unauthenticated_srtp ? "null" : "hmac-sha1-32";
+    *srtcp_cipher = attr->unencrypted_srtcp ? "null" : "aes-256-icm";
+    *srtcp_auth = attr->unencrypted_srtcp ? "null" : "hmac-sha1-32";
+
+    return TRUE;
+  }
+  if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_256_CM_SHA1_80) {
+    *srtp_cipher = attr->unencrypted_srtp ? "null" : "aes-256-icm";
+    *srtp_auth = attr->unauthenticated_srtp ? "null" : "hmac-sha1-80";
+    *srtcp_cipher = attr->unencrypted_srtcp ? "null" : "aes-256-icm";
+    *srtcp_auth = attr->unencrypted_srtcp ? "null" : "hmac-sha1-80";
+
+    return TRUE;
+  }
+  if (attr->crypto_suite == CALLS_SRTP_SUITE_F8_128_HMAC_SHA1_32) {
+    // F8 IS NOT OFFERED BY GSTREAMER
+    return FALSE;
+  }
+  if (attr->crypto_suite == CALLS_SRTP_SUITE_AEAD_AES_128_GCM) {
+
+    return FALSE;
+  }
+  if (attr->crypto_suite == CALLS_SRTP_SUITE_AEAD_AES_256_GCM) {
+
+    return FALSE;
   }
 
   return FALSE;
@@ -750,18 +831,34 @@ calls_srtp_crypto_get_srtpenc_params (calls_srtp_crypto_attribute *attr,
 {
   g_return_val_if_fail (attr, FALSE);
 
-  if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_128_SHA1_32) {
+  if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_CM_128_SHA1_32) {
     *srtp_cipher = attr->unencrypted_srtp ? GST_SRTP_CIPHER_NULL : GST_SRTP_CIPHER_AES_128_ICM;
     *srtp_auth = attr->unauthenticated_srtp ? GST_SRTP_AUTH_NULL : GST_SRTP_AUTH_HMAC_SHA1_32;
     *srtcp_cipher = attr->unencrypted_srtcp ? GST_SRTP_CIPHER_NULL : GST_SRTP_CIPHER_AES_128_ICM;
     *srtcp_auth = attr->unencrypted_srtcp ? GST_SRTP_AUTH_NULL : GST_SRTP_AUTH_HMAC_SHA1_32;
 
     return TRUE;
-  } else if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_128_SHA1_80) {
+  } else if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_CM_128_SHA1_80) {
 
     *srtp_cipher = attr->unencrypted_srtp ? GST_SRTP_CIPHER_NULL : GST_SRTP_CIPHER_AES_128_ICM;
     *srtp_auth = attr->unauthenticated_srtp ? GST_SRTP_AUTH_NULL : GST_SRTP_AUTH_HMAC_SHA1_80;
     *srtcp_cipher = attr->unencrypted_srtcp ? GST_SRTP_CIPHER_NULL : GST_SRTP_CIPHER_AES_128_ICM;
+    *srtcp_auth = attr->unencrypted_srtcp ? GST_SRTP_AUTH_NULL : GST_SRTP_AUTH_HMAC_SHA1_80;
+
+    return TRUE;
+  }
+  if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_256_CM_SHA1_32) {
+    *srtp_cipher = attr->unencrypted_srtp ? GST_SRTP_CIPHER_NULL : GST_SRTP_CIPHER_AES_256_ICM;
+    *srtp_auth = attr->unauthenticated_srtp ? GST_SRTP_AUTH_NULL : GST_SRTP_AUTH_HMAC_SHA1_32;
+    *srtcp_cipher = attr->unencrypted_srtcp ? GST_SRTP_CIPHER_NULL : GST_SRTP_CIPHER_AES_256_ICM;
+    *srtcp_auth = attr->unencrypted_srtcp ? GST_SRTP_AUTH_NULL : GST_SRTP_AUTH_HMAC_SHA1_32;
+
+    return TRUE;
+  }
+  if (attr->crypto_suite == CALLS_SRTP_SUITE_AES_256_CM_SHA1_80) {
+    *srtp_cipher = attr->unencrypted_srtp ? GST_SRTP_CIPHER_NULL : GST_SRTP_CIPHER_AES_256_ICM;
+    *srtp_auth = attr->unauthenticated_srtp ? GST_SRTP_AUTH_NULL : GST_SRTP_AUTH_HMAC_SHA1_80;
+    *srtcp_cipher = attr->unencrypted_srtcp ? GST_SRTP_CIPHER_NULL : GST_SRTP_CIPHER_AES_256_ICM;
     *srtcp_auth = attr->unencrypted_srtcp ? GST_SRTP_AUTH_NULL : GST_SRTP_AUTH_HMAC_SHA1_80;
 
     return TRUE;

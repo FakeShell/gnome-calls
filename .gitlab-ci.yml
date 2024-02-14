@@ -33,6 +33,19 @@ build:native:
     - meson ${BUILD_OPTS} . _build
     - ninja -C _build
 
+build:tarball:
+  stage: build
+  image: "${DEBIAN_IMAGE}"
+  tags: []
+  artifacts:
+    paths:
+      - _build/meson-dist
+  script:
+    - meson setup . _build
+    - xvfb-run -s -noreset meson dist -C _build
+  only:
+    - tags
+
 test:native:
   extends: build:native
   stage: test
@@ -109,6 +122,7 @@ package:deb-pureos-byzantium:arm64:
 flatpak@x86_64:
   stage: package
   extends: ['.flatpak@x86_64', '.vars-devel']
+  allow_failure: true
   except:
     variables:
       - $PKG_ONLY == "1"
@@ -117,6 +131,7 @@ flatpak@x86_64:
 flatpak@aarch64:
   stage: package
   extends: ['.flatpak@aarch64', '.vars-devel']
+  allow_failure: true
   except:
     variables:
       - $PKG_ONLY == "1"
@@ -124,11 +139,13 @@ flatpak@aarch64:
 # Publish Flatpak for x86_64
 nightly@x86_64:
   extends: '.publish_nightly'
+  allow_failure: true
   needs: ['flatpak@x86_64']
 
 # Publish Flatpak for aarch64
 nightly@aarch64:
   extends: '.publish_nightly'
+  allow_failure: true
   needs: ['flatpak@aarch64']
 
 pages:
