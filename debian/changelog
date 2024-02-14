@@ -1,8 +1,13 @@
-gnome-calls (45.0-1) UNRELEASED; urgency=medium
+gnome-calls (45.0-1) unstable; urgency=medium
 
   * New upstream release
+  * d/patches: update patches
+  * d/control: add Chris Talbot as uploader
+  * d/control: Update standards-version to 4.6.2
+  * d/control: update pkg-config to pkgconf
+  * d/lintian: remove unneeded override
 
- -- Christopher Talbot <chris@talbothome.com>  Wed, 14 Feb 2024 11:02:50 -0700
+ -- Chris Talbot <chris@talbothome.com>  Wed, 14 Feb 2024 11:10:18 -0700
 
 gnome-calls (45~alpha.0-4) unstable; urgency=medium
 
