@@ -11,7 +11,7 @@
 #include "calls-srtp-utils.h"
 #include "gst-rfc3551.h"
 
-#include <gtk/gtk.h>
+#include <glib.h>
 
 #include <gst/gst.h>
 
@@ -47,7 +47,7 @@ test_sip_media_manager_caps (void)
 
   attr = calls_srtp_crypto_attribute_new (1);
   attr->tag = 1;
-  attr->crypto_suite = CALLS_SRTP_SUITE_AES_128_SHA1_80;
+  attr->crypto_suite = CALLS_SRTP_SUITE_AES_CM_128_SHA1_80;
   calls_srtp_crypto_attribute_init_keys (attr);
 
   crypto_attributes = g_list_append (NULL, attr);
@@ -274,7 +274,7 @@ main (int   argc,
   CallsSipMediaManager *manager = calls_sip_media_manager_default ();
   int ret;
 
-  gtk_test_init (&argc, &argv, NULL);
+  g_test_init (&argc, &argv, NULL);
 
   gst_init (NULL, NULL);
 
