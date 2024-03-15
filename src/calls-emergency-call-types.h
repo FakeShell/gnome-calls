@@ -4,11 +4,22 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include <glib.h>
+
 # pragma once
 
+/**
+ * CallsEmergencyContactSource:
+ *
+ * Source of the emergency numbers:
+ *
+ * CALLS_EMERGENCY_CONTACT_SOURCE_UNKNOWN: No idea where it came from
+ * CALLS_EMERGENCY_CONTACT_SOURCE_LOCATION: Based on the devices current location
+ * CALLS_EMERGENCY_CONTACT_SOURCE_SIM: Based on information on the SIM card
+ */
 typedef enum {
   CALLS_EMERGENCY_CONTACT_SOURCE_UNKNOWN     = 0,
-  CALLS_EMERGENCY_CONTACT_SOURCE_FALLBACK    = (1 << 0),
+  CALLS_EMERGENCY_CONTACT_SOURCE_LOCATION    = (1 << 0),
   CALLS_EMERGENCY_CONTACT_SOURCE_SIM         = (1 << 1),
 } CallsEmergencyContactSource;
 
@@ -22,3 +33,4 @@ typedef enum {
 } CallsEmergencyCallTypeFlags;
 
 char *calls_emergency_call_type_get_name (const char *number, const char *country_code);
+GStrv calls_emergency_call_types_get_numbers_by_country_code (const char *country_code);
