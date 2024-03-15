@@ -6,7 +6,7 @@ export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 # https://gitlab.gnome.org/GNOME/calls/-/issues/334
 export DEB_LDFLAGS_MAINT_STRIP = -Wl,-Bsymbolic-functions
 
-ifeq ($(filter nodoc,$(DEB_BUILD_PROFILES)),)
+ifeq ($(filter nodoc,$(DEB_BUILD_PROFILES))$(filter gnome-calls-doc,$(shell dh_listpackages)),gnome-calls-doc)
   CONFIGURE_OPTS+=-Dgtk_doc=true
 else
   CONFIGURE_OPTS+=-Dgtk_doc=false
@@ -18,8 +18,7 @@ endif
 override_dh_auto_configure:
 	dh_auto_configure -- $(CONFIGURE_OPTS)
 
-override_dh_auto_build:
-	dh_auto_build
+execute_after_dh_auto_build-indep:
 ifeq ($(filter nodoc,$(DEB_BUILD_PROFILES)),)
 	# https://github.com/mesonbuild/meson/pull/2862
 	dh_auto_build -- calls-doc
