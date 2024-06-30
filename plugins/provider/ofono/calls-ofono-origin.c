@@ -26,8 +26,10 @@
 
 #include "calls-ofono-origin.h"
 #include "calls-origin.h"
+#include "calls-ussd.h"
 #include "calls-ofono-call.h"
 #include "calls-message-source.h"
+#include "calls-util.h"
 
 #include <glib/gi18n.h>
 
@@ -38,19 +40,35 @@ struct _CallsOfonoOrigin {
   GDBOModem            *modem;
   gchar                *name;
   GDBOVoiceCallManager *voice;
+  GDBOSupplementaryServices *ussd;
   gboolean              sending_tones;
   GString              *tone_queue;
   GHashTable           *calls;
+
+  /* current CallsUssdState is just MMModem3gppUssdSessionState copied to this source and renamed
+   * so in the MM backend when calling get_state they just cast it from MMModem3gppUssdSessionState to CallsUssdState
+   * here, we need to somehow keep track of it and return in a fashion that is compatible with CallsUssdState
+   * this variable does exactly this:
+   * 0: CALLS_USSD_STATE_UNKNOWN
+   * 1: CALLS_USSD_STATE_IDLE
+   * 2: CALLS_USSD_STATE_ACTIVE
+   * 3: CALLS_USSD_STATE_USER_RESPONSE
+   */
+  gint                 ussd_state;
 };
 
 static void calls_ofono_origin_message_source_interface_init (CallsOriginInterface *iface);
 static void calls_ofono_origin_origin_interface_init (CallsOriginInterface *iface);
+static void calls_ofono_origin_ussd_interface_init (CallsUssdInterface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (CallsOfonoOrigin, calls_ofono_origin, G_TYPE_OBJECT,
                          G_IMPLEMENT_INTERFACE (CALLS_TYPE_MESSAGE_SOURCE,
                                                 calls_ofono_origin_message_source_interface_init)
+                         G_IMPLEMENT_INTERFACE (CALLS_TYPE_USSD,
+                                                calls_ofono_origin_ussd_interface_init)
                          G_IMPLEMENT_INTERFACE (CALLS_TYPE_ORIGIN,
                                                 calls_ofono_origin_origin_interface_init))
+
 
 enum {
   PROP_0,
@@ -63,6 +81,268 @@ enum {
   PROP_LAST_PROP,
 };
 static GParamSpec *props[PROP_LAST_PROP];
+
+
+static void
+ussd_initiate_cb (GObject      *object,
+                  GAsyncResult *result,
+                  gpointer      user_data)
+{
+  g_autoptr (GTask) task = user_data;
+  GDBOSupplementaryServices *ussd = GDBO_SUPPLEMENTARY_SERVICES (object);
+  CallsOfonoOrigin *self = CALLS_OFONO_ORIGIN (user_data);
+  GVariant *variant = NULL;
+  GString *cleaned_response = g_string_new (NULL);
+  gchar *response = NULL;
+  GError *error = NULL;
+
+  g_assert (G_IS_TASK (task));
+  self = g_task_get_source_object (task);
+
+  g_assert (GDBO_IS_SUPPLEMENTARY_SERVICES (ussd));
+  g_assert (CALLS_IS_OFONO_ORIGIN (self));
+
+  gdbo_supplementary_services_call_initiate_finish (ussd, NULL,
+                                                    &variant, result, &error);
+
+  if (error) {
+    g_task_return_error (task, error);
+  } else {
+    if (variant != NULL) {
+      response = g_variant_print (variant, TRUE);
+
+      // Remove leading '<' and trailing '>'
+      if (response[0] == '<')
+          memmove (response, response + 1, strlen (response));
+      if (response[strlen (response) - 1] == '>')
+        response[strlen (response) - 1] = '\0';
+
+      // Remove leading and trailing single quotes
+      if (response[0] == '\'')
+        memmove (response, response + 1, strlen (response));
+      if (response[strlen (response) - 1] == '\'')
+        response[strlen (response) - 1] = '\0';
+
+      // Replace "\\n" with "\n"
+      for (gchar *p = response; *p != '\0'; p++) {
+        if (p[0] == '\\' && p[1] == 'n') {
+          g_string_append_c (cleaned_response, '\n');
+          p++;
+        } else
+          g_string_append_c (cleaned_response, *p);
+      }
+
+      g_free (response);
+      response = g_strdup (cleaned_response->str);
+      g_string_free (cleaned_response, TRUE);
+    }
+    self->ussd_state = 3;
+    g_task_return_pointer (task, response, g_free);
+  }
+}
+
+static void
+ussd_reinitiate_cb (GObject      *object,
+                    GAsyncResult *result,
+                    gpointer      user_data)
+{
+  g_autoptr (GTask) task = user_data;
+  CallsUssd *ussd = CALLS_USSD (object);
+  CallsOfonoOrigin *self = CALLS_OFONO_ORIGIN (user_data);
+  GCancellable *cancellable;
+  GError *error = NULL;
+  const char *command;
+
+  g_assert (G_IS_TASK (task));
+  self = g_task_get_source_object (task);
+
+  g_assert (CALLS_IS_USSD (ussd));
+  g_assert (CALLS_IS_OFONO_ORIGIN (self));
+
+  calls_ussd_cancel_finish (ussd, result, &error);
+  cancellable = g_task_get_cancellable (task);
+  command = g_task_get_task_data (task);
+
+  if (error)
+    g_task_return_error (task, error);
+  else {
+    self->ussd_state = 2;
+    gdbo_supplementary_services_call_initiate (self->ussd, command, cancellable,
+                                               ussd_initiate_cb, g_steal_pointer (&task));
+  }
+}
+
+static void
+ussd_respond_cb (GObject      *object,
+                 GAsyncResult *result,
+                 gpointer      user_data)
+{
+  g_autoptr (GTask) task = user_data;
+  GDBOSupplementaryServices *ussd = GDBO_SUPPLEMENTARY_SERVICES (object);
+  CallsOfonoOrigin *self;
+  gchar *response = NULL;
+  GError *error = NULL;
+
+  g_assert (G_IS_TASK (task));
+  self = g_task_get_source_object (task);
+
+  g_assert (CALLS_IS_OFONO_ORIGIN (self));
+  g_assert (GDBO_IS_SUPPLEMENTARY_SERVICES (ussd));
+
+  gdbo_supplementary_services_call_respond_finish (ussd, &response, result, &error);
+
+  if (error)
+    g_task_return_error (task, error);
+  else
+    g_task_return_pointer (task, response, g_free);
+}
+
+static void
+ussd_cancel_cb (GObject      *object,
+                GAsyncResult *result,
+                gpointer      user_data)
+{
+  g_autoptr (GTask) task = user_data;
+  GDBOSupplementaryServices *ussd = GDBO_SUPPLEMENTARY_SERVICES (object);
+  CallsOfonoOrigin *self;
+  GError *error = NULL;
+  gboolean response;
+
+  g_assert (G_IS_TASK (task));
+  self = g_task_get_source_object (task);
+
+  g_assert (CALLS_IS_OFONO_ORIGIN (self));
+  g_assert (GDBO_IS_SUPPLEMENTARY_SERVICES (ussd));
+
+  response = gdbo_supplementary_services_call_cancel_finish (ussd, result, &error);
+  self->ussd_state = 1;
+
+  if (error)
+    g_task_return_error (task, error);
+  else
+    g_task_return_boolean (task, response);
+}
+
+static CallsUssdState
+calls_ofono_ussd_get_state (CallsUssd *ussd)
+{
+  CallsOfonoOrigin *self = CALLS_OFONO_ORIGIN (ussd);
+  if (!self->ussd) {
+    self->ussd_state = 0;
+    return CALLS_USSD_STATE_UNKNOWN;
+  }
+
+  return self->ussd_state;
+}
+
+static void
+calls_ofono_ussd_initiate_async (CallsUssd          *ussd,
+                                 const char         *command,
+                                 GCancellable       *cancellable,
+                                 GAsyncReadyCallback callback,
+                                 gpointer            user_data)
+{
+  g_autoptr (GTask) task = NULL;
+  CallsOfonoOrigin *self = CALLS_OFONO_ORIGIN (ussd);
+  CallsUssdState state;
+
+  g_return_if_fail (CALLS_IS_USSD (ussd));
+
+  task = g_task_new (self, cancellable, callback, user_data);
+
+  if (!self->ussd) {
+    g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_NOT_FOUND,
+                             "No USSD interface found");
+    return;
+  }
+
+  if (STR_IS_NULL_OR_EMPTY (command)) {
+    g_task_return_new_error (task, G_IO_ERROR, G_IO_ERROR_FAILED,
+                             "USSD command empty");
+    return;
+  }
+
+  state = calls_ussd_get_state (CALLS_USSD (self));
+  g_task_set_task_data (task, g_strdup (command), g_free);
+
+  if (state == CALLS_USSD_STATE_ACTIVE ||
+      state == CALLS_USSD_STATE_USER_RESPONSE)
+    calls_ussd_cancel_async (CALLS_USSD (self), cancellable,
+                             ussd_reinitiate_cb, g_steal_pointer (&task));
+  else {
+    self->ussd_state = 2;
+    gdbo_supplementary_services_call_initiate (self->ussd, command, cancellable,
+                                               ussd_initiate_cb, g_steal_pointer (&task));
+  }
+}
+
+static char *
+calls_ofono_ussd_initiate_finish (CallsUssd    *ussd,
+                                  GAsyncResult *result,
+                                  GError      **error)
+{
+  g_return_val_if_fail (CALLS_IS_USSD (ussd), NULL);
+  g_return_val_if_fail (G_IS_TASK (result), NULL);
+
+
+  return g_task_propagate_pointer (G_TASK (result), error);
+}
+
+static void
+calls_ofono_ussd_respond_async (CallsUssd          *ussd,
+                                const char         *response,
+                                GCancellable       *cancellable,
+                                GAsyncReadyCallback callback,
+                                gpointer            user_data)
+{
+  CallsOfonoOrigin *self = CALLS_OFONO_ORIGIN (ussd);
+  GTask *task;
+
+  g_return_if_fail (CALLS_IS_USSD (ussd));
+  task = g_task_new (self, cancellable, callback, user_data);
+  gdbo_supplementary_services_call_respond (self->ussd, response, cancellable,
+                                            ussd_respond_cb, task);
+}
+
+static char *
+calls_ofono_ussd_respond_finish (CallsUssd    *ussd,
+                                 GAsyncResult *result,
+                                 GError      **error)
+{
+  g_return_val_if_fail (CALLS_IS_USSD (ussd), NULL);
+  g_return_val_if_fail (G_IS_TASK (result), NULL);
+
+
+  return g_task_propagate_pointer (G_TASK (result), error);
+}
+
+static void
+calls_ofono_ussd_cancel_async (CallsUssd          *ussd,
+                               GCancellable       *cancellable,
+                               GAsyncReadyCallback callback,
+                               gpointer            user_data)
+{
+  CallsOfonoOrigin *self = CALLS_OFONO_ORIGIN (ussd);
+  GTask *task;
+
+  g_return_if_fail (CALLS_IS_USSD (ussd));
+
+  task = g_task_new (self, cancellable, callback, user_data);
+  gdbo_supplementary_services_call_cancel (self->ussd, cancellable,
+                                           ussd_cancel_cb, task);
+}
+
+static gboolean
+calls_ofono_ussd_cancel_finish (CallsUssd    *ussd,
+                                GAsyncResult *result,
+                                GError      **error)
+{
+  g_return_val_if_fail (CALLS_IS_USSD (ussd), FALSE);
+  g_return_val_if_fail (G_IS_TASK (result), FALSE);
+
+
+  return g_task_propagate_boolean (G_TASK (result), error);
+}
 
 
 static void
@@ -480,6 +760,25 @@ voice_new_cb (GDBusConnection  *connection,
 
 
 static void
+ussd_new_cb (GDBusConnection  *connection,
+             GAsyncResult     *res,
+             CallsOfonoOrigin *self)
+{
+  g_autoptr (GError) error = NULL;
+
+  self->ussd = gdbo_supplementary_services_proxy_new_finish
+                  (res, &error);
+  if (!self->ussd) {
+    g_warning ("Error creating oFono"
+               " SupplementaryServices `%s' proxy: %s",
+               self->name, error->message);
+    CALLS_ERROR (self, error);
+    return;
+  }
+}
+
+
+static void
 constructed (GObject *object)
 {
   CallsOfonoOrigin *self = CALLS_OFONO_ORIGIN (object);
@@ -508,6 +807,15 @@ constructed (GObject *object)
     self);
 
   G_OBJECT_CLASS (calls_ofono_origin_parent_class)->constructed (object);
+
+  gdbo_supplementary_services_proxy_new
+    (self->connection,
+    G_DBUS_PROXY_FLAGS_NONE,
+    g_dbus_proxy_get_name (modem_proxy),
+    g_dbus_proxy_get_object_path (modem_proxy),
+    NULL,
+    (GAsyncReadyCallback) ussd_new_cb,
+    self);
 }
 
 
@@ -575,6 +883,19 @@ calls_ofono_origin_class_init (CallsOfonoOriginClass *klass)
 static void
 calls_ofono_origin_message_source_interface_init (CallsOriginInterface *iface)
 {
+}
+
+
+static void
+calls_ofono_origin_ussd_interface_init (CallsUssdInterface *iface)
+{
+  iface->get_state = calls_ofono_ussd_get_state;
+  iface->initiate_async = calls_ofono_ussd_initiate_async;
+  iface->initiate_finish = calls_ofono_ussd_initiate_finish;
+  iface->respond_async = calls_ofono_ussd_respond_async;
+  iface->respond_finish = calls_ofono_ussd_respond_finish;
+  iface->cancel_async = calls_ofono_ussd_cancel_async;
+  iface->cancel_finish = calls_ofono_ussd_cancel_finish;
 }
 
 
