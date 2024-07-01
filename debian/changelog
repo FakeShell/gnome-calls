@@ -1,3 +1,9 @@
+gnome-calls (46.3-1) UNRELEASED; urgency=medium
+
+  * New upstream release
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 01 Jul 2024 14:06:30 +0200
+
 gnome-calls (46.0-1) unstable; urgency=medium
 
   [ Helmut Grohne ]
