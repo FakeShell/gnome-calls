@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-export DEB_BUILD_MAINT_OPTIONS = hardening=+all,optimize=+lto
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all optimize=+lto
 
 # Ubuntu builds with symbolic-functions by default which causes plugin issues
 # https://gitlab.gnome.org/GNOME/calls/-/issues/334
