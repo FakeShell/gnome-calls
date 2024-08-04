@@ -5,7 +5,7 @@ gnome-calls (46.3-2) unstable; urgency=medium
   * d/rules: No need to specify the build directory
   * d/gbp.conf: Switch debian-branch to debian/latest
 
- -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sun, 04 Aug 2024 15:18:33 +0200
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sun, 04 Aug 2024 19:29:40 +0200
 
 gnome-calls (46.3-1) unstable; urgency=medium
 
