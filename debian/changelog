@@ -1,3 +1,12 @@
+gnome-calls (46.3-2) unstable; urgency=medium
+
+  * d/rules: Enable link time optimizations (Closes: #1015419)
+  * d/rules: Only strip -Bsymbolic-functions on Ubuntu and derived distros
+  * d/rules: No need to specify the build directory
+  * d/gbp.conf: Switch debian-branch to debian/latest
+
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sun, 04 Aug 2024 15:18:33 +0200
+
 gnome-calls (46.3-1) unstable; urgency=medium
 
   * New upstream release
