@@ -1,4 +1,3 @@
-From c29d2cc02ee284433221e48b2c29307fceb544ef Mon Sep 17 00:00:00 2001
 From: Chris Talbot <chris@talbothome.com>
 Date: Wed, 14 Feb 2024 14:15:39 -0700
 Subject: [PATCH] test: disable sip test
@@ -32,6 +31,3 @@ index 49f5cd1..25ef99e 100644
  test_sources = [ 'test-srtp.c' ]
  test_sources += sip_sources
  t = executable('srtp', test_sources,
--- 
-2.43.0
-

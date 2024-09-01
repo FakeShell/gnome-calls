@@ -1,2 +1,2 @@
-0001-add-signal-for-main-window-hiding.patch
-0002-test-disable-sip-test.patch
+add-signal-for-main-window-hiding.patch
+disable-flaky-sip-test.patch
