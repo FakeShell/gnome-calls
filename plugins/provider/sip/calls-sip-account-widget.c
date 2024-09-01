@@ -51,7 +51,9 @@ static GParamSpec *props[PROP_LAST_PROP];
 
 
 struct _CallsSipAccountWidget {
-  GtkBox            parent;
+  AdwBin            parent;
+
+  GtkWidget        *child;
 
   /* Header bar */
   GtkWidget        *header_add;
@@ -63,18 +65,18 @@ struct _CallsSipAccountWidget {
   GtkWidget        *delete_btn;
 
   /* widgets for editing account credentials */
-  GtkEntry         *host;
-  GtkEntry         *display_name;
-  GtkEntry         *user;
-  GtkEntry         *password;
-  GtkEntry         *port;
+  AdwEntryRow      *host;
+  AdwEntryRow      *display_name;
+  AdwEntryRow      *user;
+  AdwEntryRow      *password;
+  AdwEntryRow      *port;
   char             *last_port;
-  HdyComboRow      *protocol;
-  GListStore       *protocols_store; /* bound model for protocol HdyComboRow */
-  HdyComboRow      *media_encryption;
+  AdwComboRow      *protocol;
+  GtkStringList    *protocols_store; /* bound model for protocol AdwComboRow */
+  AdwComboRow      *media_encryption;
   GListStore       *media_encryption_store;
-  GtkSwitch        *tel_switch;
-  GtkSwitch        *auto_connect_switch;
+  AdwSwitchRow     *tel_switch;
+  AdwSwitchRow     *auto_connect_switch;
 
 
   /* properties */
@@ -87,7 +89,7 @@ struct _CallsSipAccountWidget {
   gboolean          port_self_change;
 };
 
-G_DEFINE_TYPE (CallsSipAccountWidget, calls_sip_account_widget, GTK_TYPE_BOX)
+G_DEFINE_TYPE (CallsSipAccountWidget, calls_sip_account_widget, ADW_TYPE_BIN)
 
 
 static gboolean
@@ -105,22 +107,20 @@ is_form_filled (CallsSipAccountWidget *self)
   g_assert (CALLS_IS_SIP_ACCOUNT_WIDGET (self));
 
   return
-    g_strcmp0 (gtk_entry_get_text (self->host), "") != 0 &&
-    g_strcmp0 (gtk_entry_get_text (self->user), "") != 0 &&
-    g_strcmp0 (gtk_entry_get_text (self->password), "") != 0 &&
-    g_strcmp0 (gtk_entry_get_text (self->port), "") != 0;
+    g_strcmp0 (gtk_editable_get_text (GTK_EDITABLE (self->host)), "") != 0 &&
+    g_strcmp0 (gtk_editable_get_text (GTK_EDITABLE (self->user)), "") != 0 &&
+    g_strcmp0 (gtk_editable_get_text (GTK_EDITABLE (self->password)), "") != 0 &&
+    g_strcmp0 (gtk_editable_get_text (GTK_EDITABLE (self->port)), "") != 0;
 }
 
 static const char *
 get_selected_protocol (CallsSipAccountWidget *self)
 {
-  g_autoptr (HdyValueObject) obj = NULL;
   const char *protocol = NULL;
   gint i;
 
-  if ((i = hdy_combo_row_get_selected_index (self->protocol)) != -1) {
-    obj = g_list_model_get_item (G_LIST_MODEL (self->protocols_store), i);
-    protocol = hdy_value_object_get_string (obj);
+  if ((i = adw_combo_row_get_selected(self->protocol)) != GTK_INVALID_LIST_POSITION) {
+    protocol = gtk_string_list_get_string (self->protocols_store, i);
   }
   return protocol;
 }
@@ -129,11 +129,11 @@ get_selected_protocol (CallsSipAccountWidget *self)
 static SipMediaEncryption
 get_selected_media_encryption (CallsSipAccountWidget *self)
 {
-  g_autoptr (HdyValueObject) obj = NULL;
+  GObject *obj = NULL;
   SipMediaEncryption media_encryption = SIP_MEDIA_ENCRYPTION_NONE;
   gint i;
 
-  if ((i = hdy_combo_row_get_selected_index (self->media_encryption)) != -1) {
+  if ((i = adw_combo_row_get_selected(self->media_encryption)) != GTK_INVALID_LIST_POSITION) {
     obj = g_list_model_get_item (G_LIST_MODEL (self->media_encryption_store), i);
     media_encryption = (SipMediaEncryption) GPOINTER_TO_INT (g_object_get_data (G_OBJECT (obj), "value"));
   }
@@ -158,7 +158,7 @@ update_media_encryption (CallsSipAccountWidget *self)
                             transport_is_tls | sdes_always_allowed);
 
   if (!transport_is_tls && !sdes_always_allowed)
-    hdy_combo_row_set_selected_index (self->media_encryption, 0);
+    adw_combo_row_set_selected (self->media_encryption, 0);
 }
 
 
@@ -179,40 +179,6 @@ on_user_changed (CallsSipAccountWidget *self)
 }
 
 
-static void
-set_password_visibility (CallsSipAccountWidget *self, gboolean visible)
-{
-  const char *icon_name;
-
-  g_assert (CALLS_IS_SIP_ACCOUNT_WIDGET (self));
-  g_assert (GTK_IS_ENTRY (self->password));
-
-  icon_name = visible ?
-              "view-conceal-symbolic" :
-              "view-reveal-symbolic";
-
-  gtk_entry_set_visibility (self->password, visible);
-  gtk_entry_set_icon_from_icon_name (self->password, GTK_ENTRY_ICON_SECONDARY,
-                                     icon_name);
-}
-
-
-static void
-on_password_visibility_changed (CallsSipAccountWidget *self,
-                                GtkEntryIconPosition   icon_pos,
-                                GdkEvent              *event,
-                                GtkEntry              *entry)
-{
-  gboolean visible;
-
-  g_assert (CALLS_IS_SIP_ACCOUNT_WIDGET (self));
-  g_assert (GTK_IS_ENTRY (entry));
-  g_assert (icon_pos == GTK_ENTRY_ICON_SECONDARY);
-
-  visible = !gtk_entry_get_visibility (entry);
-  set_password_visibility (self, visible);
-}
-
 /*
  * Stop "insert-text" signal emission if any undesired port
  * value occurs
@@ -222,13 +188,13 @@ on_port_entry_insert_text (CallsSipAccountWidget *self,
                            char                  *new_text,
                            int                    new_text_length,
                            gpointer               position,
-                           GtkEntry              *entry)
+                           AdwEntryRow           *entry)
 {
   size_t digit_end, len;
   int *pos;
 
   g_assert (CALLS_IS_SIP_ACCOUNT_WIDGET (self));
-  g_assert (GTK_IS_ENTRY (entry));
+  g_assert (ADW_IS_ENTRY_ROW (entry));
 
   if (!new_text || !*new_text || self->port_self_change)
     return;
@@ -251,13 +217,13 @@ on_port_entry_insert_text (CallsSipAccountWidget *self,
     gtk_widget_error_bell (GTK_WIDGET (entry));
   } else {
     g_free (self->last_port);
-    self->last_port = g_strdup (gtk_entry_get_text (entry));
+    self->last_port = g_strdup (gtk_editable_get_text (GTK_EDITABLE (entry)));
   }
 }
 
 
 static gboolean
-update_port_cursor_position (GtkEntry *entry)
+update_port_cursor_position (AdwEntryRow *entry)
 {
   int pos;
 
@@ -274,7 +240,7 @@ get_port (CallsSipAccountWidget *self)
   const char *text;
   int port = 0;
 
-  text = gtk_entry_get_text (self->port);
+  text = gtk_editable_get_text (GTK_EDITABLE (self->port));
   port = (int) g_ascii_strtod (text, NULL);
 
   return port;
@@ -286,14 +252,14 @@ on_port_entry_after_insert_text (CallsSipAccountWidget *self,
                                  char                  *new_text,
                                  int                    new_text_length,
                                  gpointer               position,
-                                 GtkEntry              *entry)
+                                 AdwEntryRow           *entry)
 {
   int port = get_port (self);
 
   /* Reset to the old value if new port number is invalid */
   if ((port < 0 || port > 65535) && self->last_port) {
     self->port_self_change = TRUE;
-    gtk_entry_set_text (entry, self->last_port);
+    gtk_editable_set_text (GTK_EDITABLE (entry), self->last_port);
     g_idle_add (G_SOURCE_FUNC (update_port_cursor_position), entry);
     gtk_widget_error_bell (GTK_WIDGET (entry));
     self->port_self_change = FALSE;
@@ -306,12 +272,12 @@ update_header (CallsSipAccountWidget *self)
   g_assert (CALLS_IS_SIP_ACCOUNT_WIDGET (self));
 
   if (self->origin) {
-    gtk_widget_show (self->header_edit);
-    gtk_widget_hide (self->header_add);
+    gtk_widget_set_visible (self->header_edit, TRUE);
+    gtk_widget_set_visible (self->header_add, FALSE);
 
   } else {
-    gtk_widget_show (self->header_add);
-    gtk_widget_hide (self->header_edit);
+    gtk_widget_set_visible (self->header_add, TRUE);
+    gtk_widget_set_visible (self->header_edit, FALSE);
   }
 
   if (self->connecting) {
@@ -335,9 +301,7 @@ find_protocol (CallsSipAccountWidget *self,
 
   len = g_list_model_get_n_items (G_LIST_MODEL (self->protocols_store));
   for (guint i = 0; i < len; i++) {
-    g_autoptr (HdyValueObject) obj =
-      g_list_model_get_item (G_LIST_MODEL (self->protocols_store), i);
-    const char *prot = hdy_value_object_get_string (obj);
+    const char *prot = gtk_string_list_get_string (self->protocols_store, i);
 
     if (g_strcmp0 (protocol, prot) == 0) {
       if (index)
@@ -363,7 +327,7 @@ find_media_encryption (CallsSipAccountWidget   *self,
   len = g_list_model_get_n_items (G_LIST_MODEL (self->media_encryption_store));
 
   for (guint i = 0; i < len; i++) {
-    g_autoptr (HdyValueObject) obj =
+    GString* obj =
       g_list_model_get_item (G_LIST_MODEL (self->media_encryption_store), i);
     SipMediaEncryption obj_enc =
       (SipMediaEncryption) GPOINTER_TO_INT (g_object_get_data (G_OBJECT (obj), "value"));
@@ -385,16 +349,16 @@ clear_form (CallsSipAccountWidget *self)
 {
   g_assert (CALLS_IS_SIP_ACCOUNT_WIDGET (self));
 
-  gtk_entry_set_text (self->host, "");
-  gtk_entry_set_text (self->display_name, "");
-  gtk_entry_set_text (self->user, "");
-  gtk_entry_set_text (self->password, "");
-  gtk_entry_set_text (self->port, "0");
-  hdy_combo_row_set_selected_index (self->protocol, 0);
+  gtk_editable_set_text (GTK_EDITABLE (self->host), "");
+  gtk_editable_set_text (GTK_EDITABLE (self->display_name), "");
+  gtk_editable_set_text (GTK_EDITABLE (self->user), "");
+  gtk_editable_set_text (GTK_EDITABLE (self->password), "");
+  gtk_editable_set_text (GTK_EDITABLE (self->port), "0");
+  adw_combo_row_set_selected (self->protocol, 0);
   gtk_widget_set_sensitive (GTK_WIDGET (self->media_encryption), FALSE);
-  hdy_combo_row_set_selected_index (self->media_encryption, 0);
-  gtk_switch_set_state (self->tel_switch, FALSE);
-  gtk_switch_set_state (self->auto_connect_switch, TRUE);
+  adw_combo_row_set_selected (self->media_encryption, 0);
+  adw_switch_row_set_active (self->tel_switch, FALSE);
+  adw_switch_row_set_active (self->auto_connect_switch, TRUE);
 
   self->origin = NULL;
 
@@ -458,16 +422,15 @@ edit_form (CallsSipAccountWidget *self,
     encryption_index = 0;
 
   /* set UI elements */
-  gtk_entry_set_text (self->host, host);
-  gtk_entry_set_text (self->display_name, display_name ?: "");
-  gtk_entry_set_text (self->user, user);
-  gtk_entry_set_text (self->password, password);
-  set_password_visibility (self, FALSE);
-  gtk_entry_set_text (self->port, port_str);
-  hdy_combo_row_set_selected_index (self->protocol, protocol_index);
-  hdy_combo_row_set_selected_index (self->media_encryption, encryption_index);
-  gtk_switch_set_state (self->tel_switch, can_tel);
-  gtk_switch_set_state (self->auto_connect_switch, auto_connect);
+  gtk_editable_set_text (GTK_EDITABLE (self->host), host);
+  gtk_editable_set_text (GTK_EDITABLE (self->display_name), display_name ?: "");
+  gtk_editable_set_text (GTK_EDITABLE (self->user), user);
+  gtk_editable_set_text (GTK_EDITABLE (self->password), password);
+  gtk_editable_set_text (GTK_EDITABLE (self->port), port_str);
+  adw_combo_row_set_selected (self->protocol, protocol_index);
+  adw_combo_row_set_selected (self->media_encryption, encryption_index);
+  adw_switch_row_set_active (self->tel_switch, can_tel);
+  adw_switch_row_set_active (self->auto_connect_switch, auto_connect);
 
   gtk_widget_set_sensitive (self->apply_btn, FALSE);
 
@@ -488,10 +451,10 @@ on_login_clicked (CallsSipAccountWidget *self)
 
   origin = calls_sip_provider_add_origin (self->provider,
                                           id,
-                                          gtk_entry_get_text (GTK_ENTRY (self->host)),
-                                          gtk_entry_get_text (GTK_ENTRY (self->user)),
-                                          gtk_entry_get_text (GTK_ENTRY (self->password)),
-                                          gtk_entry_get_text (GTK_ENTRY (self->display_name)),
+                                          gtk_editable_get_text (GTK_EDITABLE (self->host)),
+                                          gtk_editable_get_text (GTK_EDITABLE (self->user)),
+                                          gtk_editable_get_text (GTK_EDITABLE (self->password)),
+                                          gtk_editable_get_text (GTK_EDITABLE (self->display_name)),
                                           get_selected_protocol (self),
                                           get_port (self),
                                           get_selected_media_encryption (self),
@@ -522,15 +485,15 @@ on_apply_clicked (CallsSipAccountWidget *self)
   g_debug ("Applying changes to the account");
 
   calls_sip_origin_set_credentials (self->origin,
-                                    gtk_entry_get_text (self->host),
-                                    gtk_entry_get_text (self->user),
-                                    gtk_entry_get_text (self->password),
-                                    gtk_entry_get_text (self->display_name),
+                                    gtk_editable_get_text (GTK_EDITABLE (self->host)),
+                                    gtk_editable_get_text (GTK_EDITABLE (self->user)),
+                                    gtk_editable_get_text (GTK_EDITABLE (self->password)),
+                                    gtk_editable_get_text (GTK_EDITABLE (self->display_name)),
                                     get_selected_protocol (self),
                                     get_port (self),
                                     get_selected_media_encryption (self),
-                                    gtk_switch_get_state (self->tel_switch),
-                                    gtk_switch_get_state (self->auto_connect_switch));
+                                    adw_switch_row_get_active (self->tel_switch),
+                                    adw_switch_row_get_active (self->auto_connect_switch));
 
   update_header (self);
   calls_sip_provider_save_accounts_to_disk (self->provider);
@@ -586,6 +549,10 @@ calls_sip_account_widget_dispose (GObject *object)
 {
   CallsSipAccountWidget *self = CALLS_SIP_ACCOUNT_WIDGET (object);
 
+  GtkWidget *child = GTK_WIDGET (self->child);
+
+  g_clear_pointer (&child, gtk_widget_unparent);
+
   g_clear_pointer (&self->last_port, g_free);
   g_clear_object (&self->protocols_store);
   g_clear_object (&self->media_encryption_store);
@@ -621,6 +588,8 @@ calls_sip_account_widget_class_init (CallsSipAccountWidgetClass *klass)
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 
   gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Calls/ui/sip-account-widget.ui");
+  gtk_widget_class_bind_template_child (widget_class, CallsSipAccountWidget, child);
+
   gtk_widget_class_bind_template_child (widget_class, CallsSipAccountWidget, header_add);
   gtk_widget_class_bind_template_child (widget_class, CallsSipAccountWidget, spinner_add);
   gtk_widget_class_bind_template_child (widget_class, CallsSipAccountWidget, header_edit);
@@ -643,7 +612,6 @@ calls_sip_account_widget_class_init (CallsSipAccountWidgetClass *klass)
   gtk_widget_class_bind_template_callback (widget_class, on_delete_clicked);
   gtk_widget_class_bind_template_callback (widget_class, on_apply_clicked);
   gtk_widget_class_bind_template_callback (widget_class, on_user_changed);
-  gtk_widget_class_bind_template_callback (widget_class, on_password_visibility_changed);
   gtk_widget_class_bind_template_callback (widget_class, on_port_entry_insert_text);
   gtk_widget_class_bind_template_callback (widget_class, on_port_entry_after_insert_text);
 }
@@ -652,7 +620,7 @@ calls_sip_account_widget_class_init (CallsSipAccountWidgetClass *klass)
 static void
 calls_sip_account_widget_init (CallsSipAccountWidget *self)
 {
-  HdyValueObject *obj;
+  GtkStringObject *obj;
 
   self->settings = calls_settings_get_default ();
 
@@ -663,44 +631,30 @@ calls_sip_account_widget_init (CallsSipAccountWidget *self)
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
-  self->media_encryption_store = g_list_store_new (HDY_TYPE_VALUE_OBJECT);
+  self->media_encryption_store = g_list_store_new (GTK_TYPE_STRING_OBJECT);
 
-  obj = hdy_value_object_new_string (_("No encryption"));
+  obj = gtk_string_object_new (_("No encryption"));
   g_object_set_data (G_OBJECT (obj),
                      "value", GINT_TO_POINTER (SIP_MEDIA_ENCRYPTION_NONE));
   g_list_store_insert (self->media_encryption_store, 0, obj);
   g_clear_object (&obj);
 
   /* TODO Optional encryption */
-  obj = hdy_value_object_new_string (_("Force encryption"));
+  obj = gtk_string_object_new (_("Force encryption"));
   g_object_set_data (G_OBJECT (obj),
                      "value", GINT_TO_POINTER (SIP_MEDIA_ENCRYPTION_FORCED));
   g_list_store_insert (self->media_encryption_store, 1, obj);
   g_clear_object (&obj);
 
-  hdy_combo_row_bind_name_model (self->media_encryption,
-                                 G_LIST_MODEL (self->media_encryption_store),
-                                 (HdyComboRowGetNameFunc) hdy_value_object_dup_string,
-                                 NULL, NULL);
+  adw_combo_row_set_model(self->media_encryption, G_LIST_MODEL (self->media_encryption_store));
 
-  self->protocols_store = g_list_store_new (HDY_TYPE_VALUE_OBJECT);
+  self->protocols_store = gtk_string_list_new (NULL);
 
-  obj = hdy_value_object_new_string ("UDP");
-  g_list_store_insert (self->protocols_store, 0, obj);
-  g_clear_object (&obj);
+  gtk_string_list_append (self->protocols_store, "UDP");
+  gtk_string_list_append (self->protocols_store, "TCP");
+  gtk_string_list_append (self->protocols_store, "TLS");
 
-  obj = hdy_value_object_new_string ("TCP");
-  g_list_store_insert (self->protocols_store, 1, obj);
-  g_clear_object (&obj);
-
-  obj = hdy_value_object_new_string ("TLS");
-  g_list_store_insert (self->protocols_store, 2, obj);
-  g_clear_object (&obj);
-
-  hdy_combo_row_bind_name_model (self->protocol,
-                                 G_LIST_MODEL (self->protocols_store),
-                                 (HdyComboRowGetNameFunc) hdy_value_object_dup_string,
-                                 NULL, NULL);
+  adw_combo_row_set_model(self->protocol, G_LIST_MODEL (self->protocols_store));
 }
 
 

@@ -17,15 +17,16 @@
 
 #include "cui-call.h"
 
+#include <adwaita.h>
 #include <glib.h>
 #include <glib/gi18n-lib.h>
-#include <handy.h>
 #include <libcallaudio.h>
 
 #define IS_NULL_OR_EMPTY(x)  ((x) == NULL || (x)[0] == '\0')
 
-#define HDY_AVATAR_SIZE_BIG 160
-#define HDY_AVATAR_SIZE_DEFAULT 80
+#define ADW_AVATAR_SIZE_BIG 160
+#define ADW_AVATAR_SIZE_DEFAULT 80
+#define ADW_CSS_CLASS_DESTRUCTIVE_ACTION "destructive-action"
 
 /**
  * CuiCallDisplay:
@@ -43,11 +44,13 @@ enum {
 static GParamSpec *props[PROP_LAST_PROP];
 
 struct _CuiCallDisplay {
-  GtkOverlay              parent_instance;
+  AdwBin                  parent_instance;
+
+  GtkOverlay             *overlay;
 
   CuiCall                *call;
 
-  HdyAvatar              *avatar;
+  AdwAvatar              *avatar;
   GtkLabel               *primary_contact_info;
   GtkLabel               *secondary_contact_info;
   GtkLabel               *status;
@@ -74,7 +77,7 @@ struct _CuiCallDisplay {
   gboolean                update_status_time;
 };
 
-G_DEFINE_TYPE (CuiCallDisplay, cui_call_display, GTK_TYPE_OVERLAY);
+G_DEFINE_TYPE (CuiCallDisplay, cui_call_display, ADW_TYPE_BIN);
 
 
 /* Just print an error, the main point is that libcallaudio uses async DBus calls */
@@ -165,34 +168,16 @@ hide_dial_pad_clicked_cb (CuiCallDisplay *self)
 static void
 set_pretty_time (CuiCallDisplay *self)
 {
-#define MINUTE 60
-#define HOUR   (60 * MINUTE)
-
   gdouble elapsed;
-  g_autoptr (GString) str = NULL;
-  guint seconds, minutes;
+  g_autofree char *duration = NULL;
 
   g_assert (CUI_IS_CALL_DISPLAY (self));
   g_assert (CUI_IS_CALL (self->call));
 
   elapsed = cui_call_get_active_time (self->call);
+  duration = cui_call_format_duration (elapsed);
 
-  str = g_string_new ("");
-
-  if (elapsed > HOUR) {
-    guint hours = (guint) (elapsed / HOUR);
-    g_string_append_printf (str, "%u:", hours);
-    elapsed -= (hours * HOUR);
-  }
-
-  minutes = (guint) (elapsed / MINUTE);
-  seconds = elapsed - (minutes * MINUTE);
-  g_string_append_printf (str, "%02u:%02u", minutes, seconds);
-
-  gtk_label_set_label (self->status, str->str);
-
-#undef HOUR
-#undef MINUTE
+  gtk_label_set_label (self->status, duration);
 }
 
 
@@ -201,7 +186,6 @@ on_call_state_changed (CuiCallDisplay *self,
                        GParamSpec     *psepc,
                        CuiCall        *call)
 {
-  GtkStyleContext *hang_up_style;
   CuiCallState state;
 
   g_return_if_fail (CUI_IS_CALL_DISPLAY (self));
@@ -213,9 +197,6 @@ on_call_state_changed (CuiCallDisplay *self,
            call,
            cui_call_state_to_string (state));
 
-  hang_up_style = gtk_widget_get_style_context
-                    (GTK_WIDGET (self->hang_up));
-
   /* if the state changed than the call must be responsive */
   self->update_status_time = TRUE;
   gtk_widget_set_sensitive (GTK_WIDGET (self->answer), TRUE);
@@ -225,24 +206,23 @@ on_call_state_changed (CuiCallDisplay *self,
   switch (state)
   {
   case CUI_CALL_STATE_INCOMING:
-    hdy_avatar_set_size (self->avatar, HDY_AVATAR_SIZE_BIG);
+    adw_avatar_set_size (self->avatar, ADW_AVATAR_SIZE_BIG);
 
-    gtk_widget_hide (GTK_WIDGET (self->controls));
-    gtk_widget_show (GTK_WIDGET (self->answer));
-    gtk_style_context_remove_class
-      (hang_up_style, GTK_STYLE_CLASS_DESTRUCTIVE_ACTION);
+    gtk_widget_set_visible (GTK_WIDGET (self->controls), false);
+    gtk_widget_set_visible (GTK_WIDGET (self->answer), true);
+    gtk_widget_remove_css_class(GTK_WIDGET (self->hang_up), ADW_CSS_CLASS_DESTRUCTIVE_ACTION);
     break;
 
   case CUI_CALL_STATE_ACTIVE:
-    hdy_avatar_set_size (self->avatar, HDY_AVATAR_SIZE_DEFAULT);
+    adw_avatar_set_size (self->avatar, ADW_AVATAR_SIZE_DEFAULT);
     G_GNUC_FALLTHROUGH;
 
   case CUI_CALL_STATE_CALLING:
   case CUI_CALL_STATE_HELD:
-    gtk_style_context_add_class
-      (hang_up_style, GTK_STYLE_CLASS_DESTRUCTIVE_ACTION);
-    gtk_widget_hide (GTK_WIDGET (self->answer));
-    gtk_widget_show (GTK_WIDGET (self->controls));
+    gtk_widget_add_css_class
+      (GTK_WIDGET (self->hang_up), ADW_CSS_CLASS_DESTRUCTIVE_ACTION);
+    gtk_widget_set_visible (GTK_WIDGET (self->answer), false);
+    gtk_widget_set_visible (GTK_WIDGET (self->controls), true);
 
     gtk_widget_set_visible
       (GTK_WIDGET (self->gsm_controls),
@@ -318,8 +298,8 @@ on_update_contact_information (CuiCallDisplay *self)
     gtk_label_set_label (self->secondary_contact_info, "");
   }
 
-  hdy_avatar_set_text (self->avatar, display_name);
-  hdy_avatar_set_show_initials (self->avatar, show_initials);
+  adw_avatar_set_text (self->avatar, display_name);
+  adw_avatar_set_show_initials (self->avatar, show_initials);
 }
 
 
@@ -365,16 +345,16 @@ reset_ui (CuiCallDisplay *self)
   g_debug ("Resetting UI");
 
   self->update_status_time = TRUE;
-  hdy_avatar_set_loadable_icon (self->avatar, NULL);
-  hdy_avatar_set_text (self->avatar, "");
-  hdy_avatar_set_size (self->avatar, HDY_AVATAR_SIZE_DEFAULT);
+  adw_avatar_set_custom_image (self->avatar, NULL);
+  adw_avatar_set_text (self->avatar, "");
+  adw_avatar_set_size (self->avatar, ADW_AVATAR_SIZE_DEFAULT);
   gtk_label_set_label (self->primary_contact_info, "");
   gtk_label_set_label (self->secondary_contact_info, "");
   gtk_label_set_label (self->status, "");
-  gtk_widget_show (GTK_WIDGET (self->answer));
-  gtk_widget_show (GTK_WIDGET (self->hang_up));
-  gtk_widget_show (GTK_WIDGET (self->controls));
-  gtk_widget_show (GTK_WIDGET (self->gsm_controls));
+  gtk_widget_set_visible (GTK_WIDGET (self->answer), true);
+  gtk_widget_set_visible (GTK_WIDGET (self->hang_up), true);
+  gtk_widget_set_visible (GTK_WIDGET (self->controls), true);
+  gtk_widget_set_visible (GTK_WIDGET (self->gsm_controls), true);
   gtk_widget_set_sensitive (GTK_WIDGET (self->answer), TRUE);
   gtk_widget_set_sensitive (GTK_WIDGET (self->hang_up), TRUE);
 }
@@ -483,6 +463,10 @@ cui_call_display_dispose (GObject *object)
 {
   CuiCallDisplay *self = CUI_CALL_DISPLAY (object);
 
+  GtkWidget *overlay = GTK_WIDGET (self->overlay);
+
+  g_clear_pointer (&overlay, gtk_widget_unparent);
+
   if (self->call) {
     g_object_weak_unref (G_OBJECT (self->call), (GWeakNotify) on_call_unrefed, self);
     self->call = NULL;
@@ -519,6 +503,7 @@ cui_call_display_class_init (CuiCallDisplayClass *klass)
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 
   gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/CallUI/ui/cui-call-display.ui");
+  gtk_widget_class_bind_template_child (widget_class, CuiCallDisplay, overlay);
   gtk_widget_class_bind_template_child (widget_class, CuiCallDisplay, answer);
   gtk_widget_class_bind_template_child (widget_class, CuiCallDisplay, avatar);
   gtk_widget_class_bind_template_child (widget_class, CuiCallDisplay, controls);
@@ -552,6 +537,15 @@ static void
 cui_call_display_init (CuiCallDisplay *self)
 {
   gtk_widget_init_template (GTK_WIDGET (self));
+
+  g_signal_connect (gtk_editable_get_delegate (GTK_EDITABLE (self->keypad_entry)),
+                            "insert-text",
+                            G_CALLBACK (insert_text_cb),
+                            self);
+  g_signal_connect (gtk_editable_get_delegate (GTK_EDITABLE (self->keypad_entry)),
+                            "delete-text",
+                            G_CALLBACK (block_delete_cb),
+                            self);
 
   if (!call_audio_is_inited ()) {
     g_warning ("libcallaudio not initialized");
@@ -658,7 +652,7 @@ cui_call_display_set_call (CuiCallDisplay *self, CuiCall *call)
   self->avatar_icon_bind = g_object_bind_property (call,
                                                    "avatar-icon",
                                                    self->avatar,
-                                                   "loadable-icon",
+                                                   "custom-image",
                                                    G_BINDING_SYNC_CREATE);
   self->encryption_bind = g_object_bind_property (call,
                                                   "encrypted",

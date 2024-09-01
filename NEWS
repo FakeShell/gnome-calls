@@ -1,19 +1,72 @@
-Calls 46.3
-----------
+gnome-calls 47~rc.1
+-------------------
+Released August 2024
+* Now uses AdwAboutDialog, requiring Adwaita 1.5
+* Improved style sheets
+* Actually shipping translated metainfo
+* Contributors:
+    * Anton Lazarev
+    * Balló György
+    * Evangelos Ribeiro Tzaras
+    * Guido Günther
+* UI translations:
+    * Asier Sarasua Garmendia (eu)
+    * Balázs Úr (hu)
+    * Brage Fuglseth (nb)
+    * Danial Behzadi (fa)
+    * Daniel Rusek (cs)
+    * Daniel Șerbănescu (ro)
+    * Ekaterine Papava (ka)
+    * Hugo Carvalho (pt)
+    * Jiri Grönroos (fi)
+    * Jordi Mas i Hernandez (ca)
+    * Juliano de Souza Camargo (pt_BR)
+    * Jürgen Benvenuti (de)
+    * Luming Zh (zh_CN)
+    * twlvnn kraftwerk (bg)
+    * Vasil Pupkin (be)
+    * Yuri Chornoivan (uk)
+
+Calls 47.beta.0
+---------------
+Released:  August 2024
+* Add systemd unit file
+* Emit phone-hangup event
+* libpeas-2 port
+* Issues fixed:
+    * https://gitlab.gnome.org/GNOME/calls/-/issues/609
+    * https://gitlab.gnome.org/GNOME/calls/-/issues/624
+    * https://gitlab.gnome.org/GNOME/calls/-/issues/653
+    * https://gitlab.gnome.org/GNOME/calls/-/issues/652
+* Contributors:
+    * Clayton Craft
+    * Evangelos Ribeiro Tzaras
+    * Guido Günther
+* UI translations:
+    * Artur s0 (ru)
+    * Antonion Marin (ro)
+    * Chao-Hsiung Liao (zh_TW)
+    * Emin Tufan Çetin (tr)
+    * Martin (sl)
+    * Scrambled 777 (hi)
+    * Yaron Shahrabani (he)
+    * Yosef Or Boczko (he)
+
+Calls 47.alpha.0
+----------------
 Released: June 2024
+* GTK4 Port
 * Fix crash when Modem has no location services
 * Fix crash when SIP handles have never gotten set up
 * Issues fixed:
   * https://gitlab.gnome.org/GNOME/calls/-/issues/641
 * Contributors:
+    * Anton Lazarev
     * Guido Günther
 * UI translations:
-    * Rūdolfs Mazurs (lv)
-    * Bruce Cowan (en_GB)
     * A S Alam (pa)
-    * Athmane MOKRAOUI (kab)
-    * Rachida SACI (kab)
     * Aefgh Threenine (th)
+    * Vittorio Monti (it)
     * Scrambled 777 (hi)
     * Pawan Chitrakar (ne)
 

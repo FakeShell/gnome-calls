@@ -35,18 +35,15 @@
 #include "calls-plugin-manager.h"
 #include "calls-util.h"
 
-#include "gtkcustomfilter.h"
-#include "gtkfilterlistmodel.h"
-
 #include <glib/gi18n-lib.h>
 
 
 /**
  * Section:calls-account-overview
- * short_description: A #HdyWindow to manage VoIP accounts
+ * short_description: A #AdwWindow to manage VoIP accounts
  * @Title: CallsAccountOverview
  *
- * This is a #HdyWindow derived window to display and manage the
+ * This is a #AdwWindow derived window to display and manage the
  * VoIP accounts. Each available #CallsAccount from any #CallsAccountProvider
  * will be listed as a #CallsAccountRow.
  */
@@ -58,7 +55,7 @@ typedef enum {
 
 
 struct _CallsAccountOverview {
-  HdyWindow                 parent;
+  AdwWindow                 parent;
 
   /* UI widgets */
   GtkStack                 *stack;
@@ -72,8 +69,6 @@ struct _CallsAccountOverview {
   GtkWidget                *current_account_widget;
 
   /* models */
-  GtkFilter                *account_provider_filter;
-  GtkFilter                *account_filter;
   GListModel               *providers;
   GListModel               *accounts;
 
@@ -81,10 +76,10 @@ struct _CallsAccountOverview {
   GtkEventController       *key_controller;
   GtkEventController       *key_controller_account;
   CallsAccountOverviewState state;
-  CallsInAppNotification   *in_app_notification;
+  AdwToastOverlay          *toast_overlay;
 };
 
-G_DEFINE_TYPE (CallsAccountOverview, calls_account_overview, HDY_TYPE_WINDOW)
+G_DEFINE_TYPE (CallsAccountOverview, calls_account_overview, ADW_TYPE_WINDOW)
 
 
 static void
@@ -153,13 +148,9 @@ attach_account_widget (CallsAccountOverview *self,
   if (widget == self->current_account_widget)
     return;
 
-  if (self->current_account_widget)
-    gtk_container_remove (GTK_CONTAINER (self->account_window),
-                          self->current_account_widget);
+  adw_window_set_content (ADW_WINDOW (self->account_window), widget);
 
   self->current_account_widget = widget;
-  if (widget)
-    gtk_container_add (GTK_CONTAINER (self->account_window), widget);
 }
 
 
@@ -235,7 +226,7 @@ on_account_message (CallsAccount         *account,
   notification = g_strdup_printf ("%s: %s",
                                   calls_account_get_address (account),
                                   message);
-  calls_in_app_notification_show (self->in_app_notification, notification);
+  calls_in_app_notification_show (self->toast_overlay, notification);
 }
 
 
@@ -252,7 +243,7 @@ on_accounts_changed (GListModel           *accounts,
     GtkListBoxRow *row =
       gtk_list_box_get_row_at_index (GTK_LIST_BOX (self->overview), position + i - 1);
 
-    gtk_container_remove (GTK_CONTAINER (self->overview), GTK_WIDGET (row));
+    gtk_list_box_remove (GTK_LIST_BOX (self->overview), GTK_WIDGET (row));
   }
 
   for (guint i = 0; i < added; i++) {
@@ -288,6 +279,16 @@ on_accounts_changed (GListModel           *accounts,
 }
 
 
+/*
+ * Helper for `on_providers_changed` signal callback
+ */
+static void
+hide_widget (GtkWidget *widget)
+{
+  gtk_widget_set_visible (widget, FALSE);
+}
+
+
 static void
 on_providers_changed (GListModel           *providers,
                       guint                 position,
@@ -300,12 +301,12 @@ on_providers_changed (GListModel           *providers,
       g_list_model_get_item (providers, position + i);
 
     g_signal_connect_swapped (provider, "widget-edit-done",
-                              G_CALLBACK (gtk_widget_hide), self->account_window);
+                              G_CALLBACK (hide_widget), self->account_window);
   }
 
   /* Clear any acccount widgets, because they might've gone stale */
   attach_account_widget (self, NULL);
-  gtk_widget_hide (GTK_WIDGET (self->account_window));
+  gtk_widget_set_visible (GTK_WIDGET (self->account_window), FALSE);
 }
 
 
@@ -317,7 +318,7 @@ on_key_pressed (GtkEventControllerKey *controller,
                 GtkWidget             *widget)
 {
   if (keyval == GDK_KEY_Escape) {
-    gtk_widget_hide (widget);
+    gtk_widget_set_visible (widget, FALSE);
     return GDK_EVENT_STOP;
   }
 
@@ -330,10 +331,8 @@ calls_account_overview_dispose (GObject *object)
   CallsAccountOverview *self = CALLS_ACCOUNT_OVERVIEW (object);
 
   g_clear_object (&self->providers);
-  g_clear_object (&self->account_provider_filter);
 
   g_clear_object (&self->accounts);
-  g_clear_object (&self->account_filter);
 
   g_clear_object (&self->key_controller);
   g_clear_object (&self->key_controller_account);
@@ -360,7 +359,7 @@ calls_account_overview_class_init (CallsAccountOverviewClass *klass)
 
   gtk_widget_class_bind_template_child (widget_class, CallsAccountOverview, account_window);
 
-  gtk_widget_class_bind_template_child (widget_class, CallsAccountOverview, in_app_notification);
+  gtk_widget_class_bind_template_child (widget_class, CallsAccountOverview, toast_overlay);
 
   gtk_widget_class_bind_template_callback (widget_class, on_add_account_clicked);
   gtk_widget_class_bind_template_callback (widget_class, on_account_row_activated);
@@ -390,6 +389,9 @@ match_account (gpointer item,
 static void
 calls_account_overview_init (CallsAccountOverview *self)
 {
+  GtkFilter *account_provider_filter;
+  GtkFilter *account_filter;
+
   GListModel *all_providers =
     calls_plugin_manager_get_providers (calls_plugin_manager_get_default ());
   GListModel *all_origins =
@@ -397,10 +399,9 @@ calls_account_overview_init (CallsAccountOverview *self)
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
-  self->account_provider_filter = gtk_custom_filter_new (match_account_provider, NULL, NULL);
+  account_provider_filter = GTK_FILTER (gtk_custom_filter_new (match_account_provider, NULL, NULL));
   self->providers =
-    G_LIST_MODEL (gtk_filter_list_model_new (all_providers,
-                                             self->account_provider_filter));
+    G_LIST_MODEL (gtk_filter_list_model_new (all_providers, account_provider_filter));
 
   g_signal_connect (self->providers,
                     "items-changed",
@@ -410,10 +411,9 @@ calls_account_overview_init (CallsAccountOverview *self)
                         0, 0, g_list_model_get_n_items (self->providers),
                         self);
 
-  self->account_filter = gtk_custom_filter_new (match_account, NULL, NULL);
+  account_filter = GTK_FILTER (gtk_custom_filter_new (match_account, NULL, NULL));
   self->accounts =
-    G_LIST_MODEL (gtk_filter_list_model_new (all_origins,
-                                             self->account_filter));
+    G_LIST_MODEL (gtk_filter_list_model_new (all_origins, account_filter));
   g_signal_connect_object (self->accounts,
                            "items-changed",
                            G_CALLBACK (on_accounts_changed),
@@ -426,19 +426,19 @@ calls_account_overview_init (CallsAccountOverview *self)
                        -1);
   gtk_window_set_transient_for (self->account_window, GTK_WINDOW (self));
 
-  self->key_controller = gtk_event_controller_key_new (GTK_WIDGET (self));
+  self->key_controller = gtk_event_controller_key_new ();
   g_signal_connect (self->key_controller,
                     "key-pressed",
                     G_CALLBACK (on_key_pressed),
                     self);
 
-  self->key_controller_account = gtk_event_controller_key_new (GTK_WIDGET (self->account_window));
+  self->key_controller_account = gtk_event_controller_key_new ();
   g_signal_connect (self->key_controller_account,
                     "key-pressed",
                     G_CALLBACK (on_key_pressed),
                     self->account_window);
 
-  gtk_window_set_title (GTK_WINDOW (self), _("Account overview"));
+  gtk_window_set_title (GTK_WINDOW (self), _("VoIP Accounts"));
 }
 
 

@@ -9,13 +9,14 @@
 
 #pragma once
 
+#include <adwaita.h>
 #include <gtk/gtk.h>
 
 G_BEGIN_DECLS
 
 #define CUI_TYPE_KEYPAD (cui_keypad_get_type ())
 
-G_DECLARE_FINAL_TYPE (CuiKeypad, cui_keypad, CUI, KEYPAD, GtkBin);
+G_DECLARE_FINAL_TYPE (CuiKeypad, cui_keypad, CUI, KEYPAD, AdwBin);
 
 GtkWidget       *cui_keypad_new                     (gboolean symbols_visible,
                                                      gboolean letters_visible);

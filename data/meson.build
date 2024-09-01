@@ -1,3 +1,6 @@
+gnome = import('gnome')
+i18n = import('i18n')
+
 datadir = get_option('datadir')
 sysconfdir = get_option('sysconfdir')
 
@@ -20,17 +23,27 @@ desktop_daemon_file = i18n.merge_file(
   install_dir : join_paths(sysconfdir, 'xdg/autostart')
 )
 
-# DBus service
 service_data = configuration_data()
 service_data.set('bindir', full_bindir)
-service_file = 'org.gnome.Calls.service'
 
+# DBus service
+service_file = 'org.gnome.Calls.service'
 configure_file(
   input : service_file + '.in',
   output : service_file,
   configuration : service_data,
   install : true,
   install_dir : full_servicedir,
+)
+
+# Systemd user service
+systemd_unit = 'calls-daemon.service'
+configure_file(
+  input : systemd_unit + '.in',
+  output : systemd_unit,
+  configuration : service_data,
+  install : true,
+  install_dir : systemd_user_unit_dir,
 )
 
 desktop_utils = find_program('desktop-file-validate', required: false)
@@ -57,8 +70,12 @@ endif
 
 
 # Metainfo file
-install_data('org.gnome.Calls.metainfo.xml',
-    install_dir: join_paths(datadir, 'metainfo'),
+metainfo_file = i18n.merge_file(
+  input: 'org.gnome.Calls.metainfo.xml.in',
+  output: 'org.gnome.Calls.metainfo.xml',
+  po_dir: '../po',
+  install: true,
+  install_dir: join_paths(datadir, 'metainfo')
 )
 
 appstreamcli = find_program('appstreamcli', required: false)
@@ -67,8 +84,7 @@ if appstreamcli.found()
        args: ['validate',
               '--pedantic',
               '--no-net',
-              join_paths(meson.current_source_dir(),
-                         'org.gnome.Calls.metainfo.xml')
+              metainfo_file
              ])
 endif
 

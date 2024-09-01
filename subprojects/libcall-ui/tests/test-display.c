@@ -23,6 +23,7 @@ static void
 test_display (void)
 {
   CuiCallDisplay *display;
+  GtkWidget *display_w;
   CuiDummyCall *call_one = cui_dummy_call_new ();
   CuiDummyCall *call_two = cui_dummy_call_new ();
 
@@ -69,7 +70,8 @@ test_display (void)
 
   /* Clean up */
   g_assert_finalize_object (call_two);
-  gtk_widget_destroy (GTK_WIDGET (display));
+  display_w = GTK_WIDGET (display);
+  g_clear_pointer (&display_w, gtk_widget_unrealize);
 }
 
 int

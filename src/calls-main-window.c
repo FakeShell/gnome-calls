@@ -36,28 +36,27 @@
 #include "calls-util.h"
 #include "version.h"
 
+#include <adwaita.h>
 #include <glib/gi18n.h>
 #include <glib-object.h>
-#include <handy.h>
 
 
 struct _CallsMainWindow {
-  HdyApplicationWindow    parent_instance;
+  AdwApplicationWindow    parent_instance;
 
   GListModel             *record_store;
 
-  CallsInAppNotification *in_app_notification;
+  AdwToastOverlay        *toast_overlay;
 
-  HdyViewSwitcherTitle   *title_switcher;
-  GtkStack               *main_stack;
+  AdwViewSwitcherTitle   *title_switcher;
+  AdwViewStack           *main_stack;
 
-  GtkRevealer            *permanent_error_revealer;
-  GtkLabel               *permanent_error_label;
+  AdwBanner              *permanent_error_banner;
 
   CallsAccountOverview   *account_overview;
   CallsNewCallBox        *new_call;
 
-  GtkDialog              *ussd_dialog;
+  GtkWindow              *ussd_dialog;
   GtkStack               *ussd_stack;
   GtkSpinner             *ussd_spinner;
   GtkBox                 *ussd_content;
@@ -68,7 +67,7 @@ struct _CallsMainWindow {
   GtkButton              *ussd_reply_button;
 };
 
-G_DEFINE_TYPE (CallsMainWindow, calls_main_window, HDY_TYPE_APPLICATION_WINDOW);
+G_DEFINE_TYPE (CallsMainWindow, calls_main_window, ADW_TYPE_APPLICATION_WINDOW);
 
 enum {
   PROP_0,
@@ -87,7 +86,7 @@ about_action (GSimpleAction *action,
 
   const gchar *version = NULL;
 
-  static const gchar *authors[] = {
+  static const gchar *developers[] = {
     "Adrien Plazas <kekun.plazas@laposte.net>",
     "Bob Ham <rah@settrans.net>",
     "Guido Günther <agx@sigxcpu.org>",
@@ -96,7 +95,7 @@ about_action (GSimpleAction *action,
     NULL
   };
 
-  static const gchar *artists[] = {
+  static const gchar *designers[] = {
     "Tobias Bernard <tbernard@gnome.org>",
     NULL
   };
@@ -109,22 +108,17 @@ about_action (GSimpleAction *action,
   version = g_str_equal (VCS_TAG, "") ?
             PACKAGE_VERSION : PACKAGE_VERSION "-" VCS_TAG;
 
-  /*
-   * “program-name” defaults to g_get_application_name().
-   * Don’t set it explicitly so that there is one less
-   * string to translate.
-   */
-  gtk_show_about_dialog (GTK_WINDOW (self),
-                         "artists", artists,
-                         "authors", authors,
-                         "copyright", "Copyright © 2018 - 2022 Purism",
-                         "documenters", documenters,
-                         "license-type", GTK_LICENSE_GPL_3_0,
-                         "logo-icon-name", APP_ID,
-                         "translator-credits", _("translator-credits"),
-                         "version", version,
-                         "website", PACKAGE_URL,
-                         NULL);
+  adw_show_about_dialog_from_appdata (GTK_WIDGET (self),
+                                      "/org/gnome/Calls/org.gnome.Calls.metainfo.xml",
+                                      PACKAGE_VERSION, // must match a release in metainfo.xml
+                                      "designers", designers,
+                                      "developers", developers,
+                                      "developer-name", "The GNOME Project",
+                                      "copyright", "Copyright © 2018 - 2022 Purism",
+                                      "documenters", documenters,
+                                      "translator-credits", _("translator-credits"),
+                                      "version", version,
+                                      NULL);
 }
 
 
@@ -157,9 +151,9 @@ window_update_ussd_state (CallsMainWindow *self,
 
   if (state == CALLS_USSD_STATE_USER_RESPONSE ||
       state == CALLS_USSD_STATE_ACTIVE)
-    gtk_widget_show (GTK_WIDGET (self->ussd_cancel_button));
+    gtk_widget_set_visible (GTK_WIDGET (self->ussd_cancel_button), TRUE);
   else
-    gtk_widget_show (GTK_WIDGET (self->ussd_close_button));
+    gtk_widget_set_visible (GTK_WIDGET (self->ussd_close_button), TRUE);
 }
 
 static void
@@ -177,7 +171,8 @@ window_ussd_added_cb (CallsMainWindow *self,
   g_object_set_data_full (G_OBJECT (self->ussd_dialog), "ussd",
                           g_object_ref (ussd), g_object_unref);
   window_update_ussd_state (self, ussd);
-  gtk_window_present (GTK_WINDOW (self->ussd_dialog));
+  gtk_window_set_title (self->ussd_dialog, _("USSD"));
+  gtk_window_present (self->ussd_dialog);
 }
 
 static void
@@ -192,7 +187,7 @@ window_ussd_cancel_clicked_cb (CallsMainWindow *self)
   if (ussd)
     calls_ussd_cancel_async (ussd, NULL, NULL, NULL);
 
-  gtk_window_close (GTK_WINDOW (self->ussd_dialog));
+  gtk_window_close (self->ussd_dialog);
 }
 
 static void
@@ -205,7 +200,7 @@ window_ussd_entry_changed_cb (CallsMainWindow *self,
   g_assert (CALLS_IS_MAIN_WINDOW (self));
   g_assert (GTK_IS_ENTRY (entry));
 
-  text = gtk_entry_get_text (entry);
+  text = gtk_editable_get_text (GTK_EDITABLE (entry));
   allow_send = text && *text;
 
   gtk_widget_set_sensitive (GTK_WIDGET (self->ussd_reply_button), allow_send);
@@ -225,7 +220,7 @@ window_ussd_respond_cb (GObject      *object,
   response = calls_ussd_respond_finish (ussd, result, &error);
 
   if (error) {
-    gtk_dialog_response (self->ussd_dialog, GTK_RESPONSE_CLOSE);
+    gtk_window_close (self->ussd_dialog);
     g_warning ("USSD Error: %s", error->message);
     return;
   }
@@ -250,8 +245,8 @@ window_ussd_reply_clicked_cb (CallsMainWindow *self)
   ussd = g_object_get_data (G_OBJECT (self->ussd_dialog), "ussd");
   g_assert (CALLS_IS_USSD (ussd));
 
-  response = g_strdup (gtk_entry_get_text (self->ussd_entry));
-  gtk_entry_set_text (self->ussd_entry, "");
+  response = g_strdup (gtk_editable_get_text (GTK_EDITABLE (self->ussd_entry)));
+  gtk_editable_set_text (GTK_EDITABLE (self->ussd_entry), "");
   calls_ussd_respond_async (ussd, response, NULL,
                             window_ussd_respond_cb, self);
 }
@@ -270,7 +265,7 @@ main_window_ussd_send_cb (GObject      *object,
   ussd = g_task_get_task_data (G_TASK (result));
 
   if (error) {
-    gtk_dialog_response (self->ussd_dialog, GTK_RESPONSE_CLOSE);
+    gtk_window_close (self->ussd_dialog);
     g_warning ("USSD Error: %s", error->message);
     return;
   }
@@ -318,8 +313,10 @@ state_changed_cb (CallsMainWindow *self,
   else if (state_flags & CALLS_MANAGER_FLAGS_UNKNOWN)
     error = _("Can't place calls: No plugin loaded");
 
-  gtk_label_set_text (self->permanent_error_label, error);
-  gtk_revealer_set_reveal_child (self->permanent_error_revealer, !!error);
+  if (error)
+    adw_banner_set_title (self->permanent_error_banner, error);
+
+  adw_banner_set_revealed (self->permanent_error_banner, !!error);
 }
 
 
@@ -328,7 +325,7 @@ constructed (GObject *object)
 {
   CallsMainWindow *self = CALLS_MAIN_WINDOW (object);
   GSimpleActionGroup *simple_action_group;
-  GtkContainer *main_stack = GTK_CONTAINER (self->main_stack);
+  AdwViewStackPage *page;
   GtkWidget *widget;
   CallsHistoryBox *history;
 
@@ -336,7 +333,7 @@ constructed (GObject *object)
   g_signal_connect_object (calls_manager_get_default (),
                            "message",
                            G_CALLBACK (calls_in_app_notification_show),
-                           self->in_app_notification,
+                           self->toast_overlay,
                            G_CONNECT_SWAPPED);
 
   g_signal_connect_object (calls_manager_get_default (),
@@ -349,38 +346,32 @@ constructed (GObject *object)
                            G_CALLBACK (window_update_ussd_state),
                            self,
                            G_CONNECT_SWAPPED);
-  gtk_window_set_transient_for (GTK_WINDOW (self->ussd_dialog), GTK_WINDOW (self));
+  gtk_window_set_transient_for (self->ussd_dialog, GTK_WINDOW (self));
 
-  // Add contacs box
+  // Add call records
+  history = calls_history_box_new (self->record_store);
+  widget = GTK_WIDGET (history);
+  adw_view_stack_add_titled (self->main_stack, widget,
+                             /* Recent as in "Recent calls" (the call history) */
+                             "recent", _("Recent"));
+  page = adw_view_stack_get_page (self->main_stack, widget);
+  adw_view_stack_page_set_icon_name (page, "document-open-recent-symbolic");
+  adw_view_stack_set_visible_child_name (self->main_stack, "recent");
+
+  // Add contacts box
   widget = calls_contacts_box_new ();
-  gtk_stack_add_titled (self->main_stack, widget,
-                        "contacts", _("Contacts"));
-  gtk_container_child_set (main_stack, widget,
-                           "icon-name", "system-users-symbolic",
-                           NULL);
-  gtk_widget_set_visible (widget, TRUE);
+  adw_view_stack_add_titled (self->main_stack, widget,
+                             "contacts", _("Contacts"));
+  page = adw_view_stack_get_page (self->main_stack, widget);
+  adw_view_stack_page_set_icon_name (page, "system-users-symbolic");
 
   // Add new call box
   self->new_call = calls_new_call_box_new ();
   widget = GTK_WIDGET (self->new_call);
-  gtk_stack_add_titled (self->main_stack, widget,
-                        "dial-pad", _("Dial Pad"));
-  gtk_container_child_set (main_stack, widget,
-                           "icon-name", "input-dialpad-symbolic",
-                           NULL);
-  // Add call records
-  history = calls_history_box_new (self->record_store);
-  widget = GTK_WIDGET (history);
-  gtk_stack_add_titled (self->main_stack, widget,
-                        /* Recent as in "Recent calls" (the call history) */
-                        "recent", _("Recent"));
-  gtk_container_child_set
-    (main_stack, widget,
-    "icon-name", "document-open-recent-symbolic",
-    "position", 0,
-    NULL);
-  gtk_widget_set_visible (widget, TRUE);
-  gtk_stack_set_visible_child_name (self->main_stack, "recent");
+  adw_view_stack_add_titled (self->main_stack, widget,
+                             "dial-pad", _("Dial Pad"));
+  page = adw_view_stack_get_page (self->main_stack, widget);
+  adw_view_stack_page_set_icon_name (page, "input-dialpad-symbolic");
 
   // Add actions
   simple_action_group = g_simple_action_group_new ();
@@ -414,24 +405,11 @@ dispose (GObject *object)
 
   g_clear_object (&self->record_store);
   if (self->account_overview) {
-    gtk_widget_destroy (GTK_WIDGET (self->account_overview));
+    gtk_window_destroy (GTK_WINDOW (self->account_overview));
     self->account_overview = NULL;
   }
 
   G_OBJECT_CLASS (calls_main_window_parent_class)->dispose (object);
-}
-
-
-static void
-size_allocate (GtkWidget     *widget,
-               GtkAllocation *allocation)
-{
-  CallsMainWindow *self = CALLS_MAIN_WINDOW (widget);
-
-  hdy_view_switcher_title_set_view_switcher_enabled (self->title_switcher,
-                                                     allocation->width > 400);
-
-  GTK_WIDGET_CLASS (calls_main_window_parent_class)->size_allocate (widget, allocation);
 }
 
 
@@ -455,14 +433,10 @@ calls_main_window_class_init (CallsMainWindowClass *klass)
   g_object_class_install_properties (object_class, PROP_LAST_PROP, props);
 
 
-  widget_class->size_allocate = size_allocate;
-
   gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Calls/ui/main-window.ui");
-  gtk_widget_class_bind_template_child (widget_class, CallsMainWindow, in_app_notification);
-  gtk_widget_class_bind_template_child (widget_class, CallsMainWindow, title_switcher);
+  gtk_widget_class_bind_template_child (widget_class, CallsMainWindow, toast_overlay);
   gtk_widget_class_bind_template_child (widget_class, CallsMainWindow, main_stack);
-  gtk_widget_class_bind_template_child (widget_class, CallsMainWindow, permanent_error_revealer);
-  gtk_widget_class_bind_template_child (widget_class, CallsMainWindow, permanent_error_label);
+  gtk_widget_class_bind_template_child (widget_class, CallsMainWindow, permanent_error_banner);
 
   gtk_widget_class_bind_template_child (widget_class, CallsMainWindow, ussd_dialog);
   gtk_widget_class_bind_template_child (widget_class, CallsMainWindow, ussd_stack);
@@ -506,15 +480,15 @@ calls_main_window_dial (CallsMainWindow *self,
                         const gchar     *target)
 {
   if (calls_number_is_ussd (target)) {
-    gtk_widget_hide (GTK_WIDGET (self->ussd_cancel_button));
-    gtk_widget_hide (GTK_WIDGET (self->ussd_reply_button));
+    gtk_widget_set_visible (GTK_WIDGET (self->ussd_cancel_button), FALSE);
+    gtk_widget_set_visible (GTK_WIDGET (self->ussd_reply_button), FALSE);
     gtk_stack_set_visible_child (self->ussd_stack, GTK_WIDGET (self->ussd_spinner));
     gtk_spinner_start (self->ussd_spinner);
 
     calls_new_call_box_send_ussd_async (self->new_call, target, NULL,
                                         main_window_ussd_send_cb, self);
 
-    gtk_window_present (GTK_WINDOW (self->ussd_dialog));
+    gtk_window_present (self->ussd_dialog);
   } else {
     calls_new_call_box_dial (self->new_call, target);
   }

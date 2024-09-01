@@ -9,13 +9,13 @@
     <file preprocess="xml-stripblanks">contacts-box.ui</file>
     <file preprocess="xml-stripblanks">contacts-row.ui</file>
     <file preprocess="xml-stripblanks">history-box.ui</file>
-    <file preprocess="xml-stripblanks">in-app-notification.ui</file>
     <file preprocess="xml-stripblanks">main-window.ui</file>
     <file preprocess="xml-stripblanks">new-call-box.ui</file>
     <file preprocess="xml-stripblanks">new-call-header-bar.ui</file>
   </gresource>
   <gresource prefix="/org/gnome/Calls/">
     <file>style.css</file>
+    <file>org.gnome.Calls.metainfo.xml</file>
   </gresource>
   <gresource prefix="/org/gnome/Calls/icons/">
     <file>call-arrow-incoming-symbolic.svg</file>

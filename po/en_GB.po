@@ -2,7 +2,7 @@
 # Copyright (C) 2020 calls's COPYRIGHT HOLDER
 # This file is distributed under the same license as the calls package.
 # Zander Brown <zbrown@gnome.org>, 2020.
-# Bruce Cowan <bruce@bcowan.me.uk>, 2022-2024.
+# Bruce Cowan <bruce@bcowan.me.uk>, 2022-2023.
 #
 msgid ""
 msgstr ""
@@ -30,12 +30,12 @@ msgstr "Phone"
 
 #: data/org.gnome.Calls.desktop.in:5
 msgid "A phone dialer and call handler"
-msgstr "A phone dialler and call handler"
+msgstr "A phone dialer and call handler"
 
 #. Translators: Search terms to find this application. Do NOT translate or localize the semicolons! The list MUST also end with a semicolon!
 #: data/org.gnome.Calls.desktop.in:7 data/org.gnome.Calls-daemon.desktop.in:7
 msgid "Telephone;Call;Phone;Dial;Dialer;PSTN;"
-msgstr "Telephone;Call;Phone;Dial;Dialer;Dialler;PSTN;"
+msgstr "Telephone;Call;Phone;Dial;Dialer;PSTN;"
 
 #: data/org.gnome.Calls-daemon.desktop.in:3
 msgid "Calls (daemon)"
@@ -43,7 +43,7 @@ msgstr "Calls (daemon)"
 
 #: data/org.gnome.Calls-daemon.desktop.in:5
 msgid "A phone dialer and call handler (daemon mode)"
-msgstr "A phone dialler and call handler (daemon mode)"
+msgstr "A phone dialer and call handler (daemon mode)"
 
 #: data/org.gnome.Calls.metainfo.xml:7
 msgid "Make phone and SIP calls"

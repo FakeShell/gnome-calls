@@ -7,6 +7,7 @@
 
 #include <glib-object.h>
 #include <gio/gio.h>
+#include <gdk/gdk.h>
 
 G_BEGIN_DECLS
 
@@ -50,7 +51,7 @@ typedef enum
 struct _CuiCallInterface {
   GTypeInterface parent_iface;
 
-  GLoadableIcon *(*get_avatar_icon)        (CuiCall *self);
+  GdkPaintable  *(*get_avatar_icon)        (CuiCall *self);
   const char    *(*get_display_name)       (CuiCall *self);
   const char    *(*get_id)                 (CuiCall *self);
   CuiCallState   (*get_state)              (CuiCall *self);
@@ -63,16 +64,17 @@ struct _CuiCallInterface {
   void           (*send_dtmf)              (CuiCall *self, const gchar *dtmf);
 };
 
-GLoadableIcon *cui_call_get_avatar_icon (CuiCall *self);
-const char  *cui_call_get_display_name (CuiCall *self);
-const char  *cui_call_get_id           (CuiCall *self);
-CuiCallState cui_call_get_state        (CuiCall *self);
-gboolean     cui_call_get_encrypted    (CuiCall *self);
-gboolean     cui_call_get_can_dtmf     (CuiCall *self);
-gdouble      cui_call_get_active_time  (CuiCall *self);
+GdkPaintable *cui_call_get_avatar_icon  (CuiCall *self);
+const char   *cui_call_get_display_name (CuiCall *self);
+const char   *cui_call_get_id           (CuiCall *self);
+CuiCallState  cui_call_get_state        (CuiCall *self);
+gboolean      cui_call_get_encrypted    (CuiCall *self);
+gboolean      cui_call_get_can_dtmf     (CuiCall *self);
+gdouble       cui_call_get_active_time  (CuiCall *self);
 
-void         cui_call_accept           (CuiCall *self);
-void         cui_call_hang_up          (CuiCall *self);
-void         cui_call_send_dtmf (CuiCall *self, const gchar *dtmf);
+void          cui_call_accept           (CuiCall *self);
+void          cui_call_hang_up          (CuiCall *self);
+void          cui_call_send_dtmf (CuiCall *self, const gchar *dtmf);
 
-const char  *cui_call_state_to_string  (CuiCallState state);
+const char   *cui_call_state_to_string  (CuiCallState state);
+char         *cui_call_format_duration  (double duration);

@@ -42,10 +42,10 @@ i18n_plugin = i18n.merge_file(
 
 mm_deps = [
   dependency('gobject-2.0'),
-  dependency('gtk+-3.0'),
+  dependency('gtk4', version: '>= @0@'.format(gtk_version)),
   dependency('ModemManager'),
   dependency('mm-glib', version: '>= 1.12.0'),
-  dependency('libpeas-1.0'),
+  dependency('libpeas-2'),
 ]
 
 mm_sources = files(

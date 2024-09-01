@@ -44,10 +44,10 @@
 #include "calls-ringer.h"
 #include "version.h"
 
+#include <adwaita.h>
 #include <call-ui.h>
 #include <glib/gi18n.h>
 #include <glib-unix.h>
-#include <handy.h>
 #include <libcallaudio.h>
 
 /**
@@ -58,7 +58,7 @@
  */
 
 struct _CallsApplication {
-  GtkApplication      parent_instance;
+  AdwApplication      parent_instance;
 
   gboolean            daemon;
   CallsRinger        *ringer;
@@ -78,7 +78,7 @@ struct _CallsApplication {
   gboolean            db_done;
 };
 
-G_DEFINE_TYPE (CallsApplication, calls_application, GTK_TYPE_APPLICATION);
+G_DEFINE_TYPE (CallsApplication, calls_application, ADW_TYPE_APPLICATION);
 
 
 static void start_proper (CallsApplication *self);
@@ -404,10 +404,10 @@ copy_number (GSimpleAction *action,
              gpointer       user_data)
 {
   const char *number = g_variant_get_string (parameter, NULL);
-  GtkClipboard *clipboard =
-    gtk_clipboard_get_default (gdk_display_get_default ());
+  GdkClipboard *clipboard =
+    gdk_display_get_clipboard (gdk_display_get_default ());
 
-  gtk_clipboard_set_text (clipboard, number, -1);
+  gdk_clipboard_set_text (clipboard, number);
 
   g_debug ("Copied `%s' to clipboard", number);
 }
@@ -472,21 +472,11 @@ calls_application_handle_local_options (GApplication *application,
 static void
 startup (GApplication *application)
 {
-  g_autoptr (GtkCssProvider) provider = NULL;
   g_autoptr (GError) error = NULL;
-#if HDY_CHECK_VERSION (1, 5, 0)
-  HdyStyleManager *style_manager;
-#endif
 
   G_APPLICATION_CLASS (calls_application_parent_class)->startup (application);
 
-  hdy_init ();
-
-#if HDY_CHECK_VERSION (1, 5, 0)
-  style_manager = hdy_style_manager_get_default ();
-
-  hdy_style_manager_set_color_scheme (style_manager, HDY_COLOR_SCHEME_PREFER_LIGHT);
-#endif
+  g_print ("Calls %s starting up...\n", VCS_TAG);
 
   if (!call_audio_init (&error))
     g_warning ("Failed to init libcallaudio: %s", error->message);
@@ -498,6 +488,9 @@ startup (GApplication *application)
 
   if (!g_get_application_name ())
     g_set_application_name (_("Calls"));
+
+  if (!gtk_window_get_default_icon_name ())
+    gtk_window_set_default_icon_name (APP_ID);
 
   g_action_map_add_action_entries (G_ACTION_MAP (application),
                                    actions,
@@ -511,12 +504,6 @@ startup (GApplication *application)
                            G_CONNECT_SWAPPED);
 
   manager_state_changed_cb (application);
-
-  provider = gtk_css_provider_new ();
-  gtk_css_provider_load_from_resource (provider, "/org/gnome/Calls/style.css");
-  gtk_style_context_add_provider_for_screen (gdk_screen_get_default (),
-                                             GTK_STYLE_PROVIDER (provider),
-                                             GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
 }
 
 
@@ -672,7 +659,7 @@ start_proper (CallsApplication *self)
 
   self->main_window =
     calls_main_window_new (gtk_app,
-                           G_LIST_MODEL (self->record_store));
+                           calls_record_store_get_list_model (self->record_store));
   g_assert (self->main_window != NULL);
 
   self->call_window = calls_call_window_new (gtk_app);
@@ -763,9 +750,9 @@ finalize (GObject *object)
   g_clear_handle_id (&self->id_sigint, g_source_remove);
 
   if (self->main_window)
-    gtk_widget_destroy (GTK_WIDGET (self->main_window));
+    gtk_window_destroy (GTK_WINDOW (self->main_window));
   if (self->call_window)
-    gtk_widget_destroy (GTK_WIDGET (self->call_window));
+    gtk_window_destroy (GTK_WINDOW (self->call_window));
 
   g_clear_object (&self->record_store);
   g_clear_object (&self->ringer);

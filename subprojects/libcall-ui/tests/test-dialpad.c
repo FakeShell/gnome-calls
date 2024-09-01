@@ -7,6 +7,7 @@ static void
 test_dialpad (void)
 {
   CuiDialpad *dialpad;
+  GtkWidget *dialpad_w;
   GValue val = G_VALUE_INIT;
 
   g_test_expect_message ("Cui", G_LOG_LEVEL_WARNING, "libcallaudio not initialized");
@@ -25,11 +26,13 @@ test_dialpad (void)
 
   g_object_get_property (G_OBJECT (dialpad), "number", &val);
 
-  g_assert_true (strcmp (g_value_get_string (&val), "+3129877983#*3129877983") == 0);
+  g_assert_cmpstr (g_value_get_string (&val), ==, "+3129877983#*3129877983");
+  g_assert_cmpstr (cui_dialpad_get_number (dialpad), ==, "+3129877983#*3129877983");
 
   /* Clean up */
   g_value_unset (&val);
-  gtk_widget_destroy (GTK_WIDGET (dialpad));
+  dialpad_w = GTK_WIDGET (dialpad);
+  g_clear_pointer (&dialpad_w, gtk_widget_unrealize);
 }
 
 int

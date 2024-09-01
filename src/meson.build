@@ -26,14 +26,14 @@ gnome = import('gnome')
 
 subdir('dbus')
 
-src_include = include_directories('.', 'gtklistmodels')
+src_include = include_directories('.')
 calls_includes = [ top_include, src_include ]
 
-calls_deps = [ dependency('gobject-2.0', version: '>= 2.58'),
-               dependency('gtk+-3.0'),
-               dependency('libhandy-1', version: '>= 1.4.0'),
+calls_deps = [ dependency('gobject-2.0', version: '>= 2.74'),
+               dependency('gtk4', version: '>= @0@'.format(gtk_version)),
+               dependency('libadwaita-1', version: '>= 1.5'),
                dependency('libfeedback-0.0'),
-               dependency('libpeas-1.0'),
+               dependency('libpeas-2'),
                dependency('gom-1.0'),
                dependency('libebook-contacts-1.2'),
                dependency('folks'),
@@ -78,6 +78,7 @@ calls_resources = gnome.compile_resources(
    'calls.gresources.xml',
    source_dir: ['ui', '../data'],
    c_name: 'call',
+   dependencies: metainfo_file,
 )
 
 calls_generated_sources = [
@@ -85,8 +86,6 @@ calls_generated_sources = [
   calls_resources,
   generated_dbus_sources,
 ]
-
-subdir('gtklistmodels')
 
 calls_sources = files([
   'calls-account.c', 'calls-account.h',
@@ -126,7 +125,7 @@ calls_sources = files([
   'calls-ui-call-data.c', 'calls-ui-call-data.h',
   'calls-ussd.c', 'calls-ussd.h',
   'calls-util.c', 'calls-util.h',
-]) + calls_generated_sources + gtklistmodel_sources
+]) + calls_generated_sources
 
 calls_config_data = config_data
 

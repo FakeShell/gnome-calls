@@ -6,9 +6,9 @@ stages:
 variables:
   DIST: bookworm
   DEPS: >-
-    ccache build-essential libgtk-3-dev libcallaudio-dev libhandy-1-dev meson
+    ccache build-essential libgtk-4-dev libcallaudio-dev libadwaita-1-dev meson
     python3-toml python3-jinja2 python3-typogrify libgirepository1.0-dev git
-    xvfb gcovr libxml2-utils gi-docgen
+    xvfb gcovr libxml2-utils gi-docgen dbus-x11
 
 before_script:
   - echo "man-db man-db/auto-update boolean false" | debconf-set-selections
@@ -67,7 +67,7 @@ tests:
   needs: ['build-debian-gcc']
   script:
     - meson ${BUILD_OPTS} _build
-    - xvfb-run meson test -C _build
+    - xvfb-run meson test -C _build --print-errorlogs
     - ninja -C _build coverage
   coverage: '/^lines:\s+([\d.]+\%)\s+/'
   artifacts:

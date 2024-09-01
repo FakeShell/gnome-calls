@@ -26,13 +26,13 @@
 
 #include "calls-sip-provider.h"
 
-#include <handy.h>
+#include <adwaita.h>
 
 G_BEGIN_DECLS
 
 #define CALLS_TYPE_SIP_ACCOUNT_WIDGET (calls_sip_account_widget_get_type ())
 
-G_DECLARE_FINAL_TYPE (CallsSipAccountWidget, calls_sip_account_widget, CALLS, SIP_ACCOUNT_WIDGET, GtkBox)
+G_DECLARE_FINAL_TYPE (CallsSipAccountWidget, calls_sip_account_widget, CALLS, SIP_ACCOUNT_WIDGET, AdwBin)
 
 CallsSipAccountWidget *calls_sip_account_widget_new           (CallsSipProvider      *provider);
 void            calls_sip_account_widget_set_origin    (CallsSipAccountWidget *self,

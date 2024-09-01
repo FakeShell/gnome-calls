@@ -9,7 +9,10 @@ cui-keypad > grid > button,
 cui-dialpad .dial-button,
 cui-dialpad .delete-button {
   border-radius: 9999px;
-  -gtk-outline-radius: 9999px;
+}
+
+cui-keypad > grid > button {
+  padding: 6px 16px;
 }
 
 cui-dialpad      .dial-button {
