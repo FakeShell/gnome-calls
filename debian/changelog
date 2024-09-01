@@ -1,8 +1,10 @@
-gnome-calls (47~rc.1-1) UNRELEASED; urgency=medium
+gnome-calls (47~rc.1-1) unstable; urgency=medium
 
   * New upstream release
+  * d/gbp.conf: Sign tags by default
+  * d/patches: Refresh patches
 
- -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sun, 01 Sep 2024 16:03:15 +0200
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sun, 01 Sep 2024 16:55:48 +0200
 
 gnome-calls (46.3-2) unstable; urgency=medium
 
