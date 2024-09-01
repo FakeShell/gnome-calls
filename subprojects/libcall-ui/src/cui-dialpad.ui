@@ -1,16 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface domain="call-ui">
-  <requires lib="gtk+" version="3.24"/>
+  <requires lib="gtk" version="4.0"/>
   <requires lib="libhandy" version="0.0"/>
-  <template class="CuiDialpad" parent="GtkBin">
-    <property name="visible">True</property>
+  <template class="CuiDialpad" parent="AdwBin">
     <child>
-      <object class="HdyClamp">
-        <property name="visible">True</property>
+      <object class="AdwClamp" id="clamp">
         <property name="maximum-size">300</property>
         <child>
           <object class="GtkBox">
-            <property name="visible">True</property>
             <property name="margin-start">24</property>
             <property name="margin-end">24</property>
             <property name="margin-top">16</property>
@@ -18,11 +15,10 @@
             <property name="orientation">vertical</property>
             <child>
               <object class="GtkEntry" id="keypad_entry">
-                <property name="visible">True</property>
                 <property name="hexpand">True</property>
                 <property name="xalign">0.5</property>
-                <property name="placeholder-text" translatable="yes">Enter a number</property>
-                <property name="tooltip-text" translatable="yes">Type a phone number</property>
+                <property name="placeholder-text" translatable="True">Enter a number</property>
+                <property name="tooltip-text" translatable="True">Type a phone number</property>
                 <signal name="activate" handler="dial_clicked_or_activated_cb" swapped="yes"/>
                 <style>
                   <class name="phone-number-entry"/>
@@ -31,7 +27,6 @@
             </child>
             <child>
               <object class="CuiKeypad" id="keypad">
-                <property name="visible">True</property>
                 <property name="halign">center</property>
                 <property name="margin-top">18</property>
                 <property name="margin-bottom">18</property>
@@ -41,19 +36,17 @@
               </object>
             </child>
             <child>
-              <object class="GtkBox" id="control_box">
-                <property name="visible">True</property>
+              <object class="GtkCenterBox" id="control_box">
+                <property name="hexpand">True</property>
                 <child type="center">
                   <object class="GtkButton" id="dial">
-                    <property name="visible">True</property>
                     <property name="receives-default">True</property>
-                    <property name="tooltip-text" translatable="yes">Call that phone number</property>
+                    <property name="tooltip-text" translatable="True">Call that phone number</property>
                     <signal name="clicked" handler="dial_clicked_or_activated_cb" swapped="yes"/>
                     <child>
                       <object class="GtkImage">
-                        <property name="visible">True</property>
                         <property name="icon-name">call-start-symbolic</property>
-                        <property name="icon_size">5</property>
+                        <property name="icon_size">large</property>
                       </object>
                     </child>
                     <style>
@@ -63,9 +56,8 @@
                     </style>
                   </object>
                 </child>
-                <child>
+                <child type="end">
                   <object class="GtkButton" id="backspace">
-                    <property name="visible">True</property>
                     <property name="receives-default">True</property>
                     <property name="halign">center</property>
                     <property name="valign">center</property>
@@ -73,7 +65,6 @@
                     <signal name="clicked" handler="backspace_clicked_cb" swapped="yes"/>
                     <child>
                       <object class="GtkImage">
-                        <property name="visible">True</property>
                         <property name="icon-name">edit-clear-symbolic</property>
                       </object>
                     </child>
@@ -81,24 +72,12 @@
                       <class name="delete-button"/>
                     </style>
                   </object>
-                  <packing>
-                    <property name="pack-type">end</property>
-                  </packing>
                 </child>
               </object>
             </child>
-            <focus-chain>
-              <widget name="keypad_entry"/>
-              <widget name="control_box"/>
-              <widget name="keypad"/>
-            </focus-chain>
           </object>
         </child>
       </object>
     </child>
   </template>
-  <object class="GtkGestureLongPress" id="long_press_backspace_gesture">
-    <property name="widget">backspace</property>
-    <signal name="pressed" handler="long_press_backspace_cb" object="CuiDialpad" swapped="true"/>
-  </object>
 </interface>

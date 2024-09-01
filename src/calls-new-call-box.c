@@ -32,9 +32,9 @@
 #include "calls-ussd.h"
 #include "calls-util.h"
 
+#include <adwaita.h>
 #include <call-ui.h>
 #include <glib/gi18n.h>
-#include <handy.h>
 
 enum {
   PROP_0,
@@ -44,13 +44,15 @@ enum {
 static GParamSpec *props[PROP_LAST_PROP];
 
 struct _CallsNewCallBox {
-  GtkBox        parent_instance;
+  AdwBin        parent_instance;
+
+  GtkWidget    *child;
 
   GtkListBox   *origin_list_box;
-  HdyComboRow  *origin_list;
+  AdwComboRow  *origin_list;
   CuiDialpad   *dialpad;
   GtkEntry     *address_entry;
-  HdyActionRow *result;
+  AdwActionRow *result;
   GtkButton    *dial_result;
 
   GList        *dial_queue;
@@ -58,18 +60,18 @@ struct _CallsNewCallBox {
   gboolean      numeric_input_only;
 };
 
-G_DEFINE_TYPE (CallsNewCallBox, calls_new_call_box, GTK_TYPE_BOX);
+G_DEFINE_TYPE (CallsNewCallBox, calls_new_call_box, ADW_TYPE_BIN);
 
 
 static CallsOrigin *
 get_selected_origin (CallsNewCallBox *self)
 {
   g_autoptr (CallsOrigin) origin = NULL;
-  GListModel *model = hdy_combo_row_get_model (self->origin_list);
+  GListModel *model = adw_combo_row_get_model (self->origin_list);
   gint index = -1;
 
   if (model)
-    index = hdy_combo_row_get_selected_index (self->origin_list);
+    index = adw_combo_row_get_selected (self->origin_list);
 
   if (model && index >= 0)
     origin = g_list_model_get_item (model, index);
@@ -125,7 +127,7 @@ static void
 address_activate_cb (CallsNewCallBox *self)
 {
   CallsOrigin *origin = get_selected_origin (self);
-  const char *address = gtk_entry_get_text (self->address_entry);
+  const char *address = gtk_editable_get_text (GTK_EDITABLE (self->address_entry));
 
   if (origin && !STR_IS_NULL_OR_EMPTY (address))
     calls_origin_dial (origin, address);
@@ -135,7 +137,7 @@ address_activate_cb (CallsNewCallBox *self)
 static void
 address_changed_cb (CallsNewCallBox *self)
 {
-  const char *address = gtk_entry_get_text (self->address_entry);
+  const char *address = gtk_editable_get_text (GTK_EDITABLE (self->address_entry));
 
   gtk_widget_set_visible (GTK_WIDGET (self->result),
                           !STR_IS_NULL_OR_EMPTY (address));
@@ -201,14 +203,14 @@ dialpad_dialed_cb (CuiDialpad      *dialpad,
                    const char      *number,
                    CallsNewCallBox *self)
 {
-  GtkWidget *window;
+  GtkRoot *root;
 
   g_assert (CALLS_IS_NEW_CALL_BOX (self));
 
-  window = gtk_widget_get_toplevel (GTK_WIDGET (self));
+  root = gtk_widget_get_root (GTK_WIDGET (self));
 
-  if (CALLS_IS_MAIN_WINDOW (window))
-    calls_main_window_dial (CALLS_MAIN_WINDOW (window), number);
+  if (CALLS_IS_MAIN_WINDOW (root))
+    calls_main_window_dial (CALLS_MAIN_WINDOW (root), number);
   else
     calls_new_call_box_dial (self, number);
 }
@@ -218,7 +220,7 @@ static void
 dial_result_clicked_cb (CallsNewCallBox *self)
 {
   CallsOrigin *origin = get_selected_origin (self);
-  const char *address = gtk_entry_get_text (self->address_entry);
+  const char *address = gtk_editable_get_text (GTK_EDITABLE (self->address_entry));
 
   if (origin && address && *address != '\0')
     calls_origin_dial (origin, address);
@@ -269,15 +271,6 @@ dial_queued (CallsNewCallBox *self)
 }
 
 
-static char *
-get_origin_name (gpointer item,
-                 gpointer user_data)
-{
-  g_assert (CALLS_IS_ORIGIN (item));
-
-  return calls_origin_get_name (item);
-}
-
 static void
 origin_count_changed_cb (CallsNewCallBox *self)
 {
@@ -322,12 +315,15 @@ static void
 calls_new_call_box_init (CallsNewCallBox *self)
 {
   GListModel *origins;
+  GtkExpression *get_origin_name;
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
   origins = calls_manager_get_origins (calls_manager_get_default ());
-  hdy_combo_row_bind_name_model (self->origin_list, origins,
-                                 get_origin_name, self, NULL);
+  adw_combo_row_set_model (self->origin_list, origins);
+  get_origin_name = gtk_property_expression_new (CALLS_TYPE_ORIGIN,
+                                                 NULL, "name");
+  adw_combo_row_set_expression(self->origin_list, get_origin_name);
 
   g_signal_connect_object (origins,
                            "items-changed",
@@ -343,7 +339,11 @@ calls_new_call_box_dispose (GObject *object)
 {
   CallsNewCallBox *self = CALLS_NEW_CALL_BOX (object);
 
+  GtkWidget *child = self->child;
+
   clear_dial_queue (self);
+
+  g_clear_pointer (&child, gtk_widget_unparent);
 
   G_OBJECT_CLASS (calls_new_call_box_parent_class)->dispose (object);
 }
@@ -359,6 +359,7 @@ calls_new_call_box_class_init (CallsNewCallBoxClass *klass)
   object_class->dispose = calls_new_call_box_dispose;
 
   gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Calls/ui/new-call-box.ui");
+  gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, child);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, origin_list_box);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, origin_list);
   gtk_widget_class_bind_template_child (widget_class, CallsNewCallBox, dialpad);

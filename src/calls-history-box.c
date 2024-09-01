@@ -27,7 +27,6 @@
 #include "calls-history-box.h"
 #include "calls-call-record.h"
 #include "calls-call-record-row.h"
-#include "gtklistmodels/gtkmodels.h"
 #include "calls-util.h"
 
 #include <glib/gi18n.h>
@@ -39,8 +38,9 @@
 #define CALLS_HISTORY_INCREASE_N_PAGES_THRESHOLD 2
 
 struct _CallsHistoryBox {
-  GtkStack           parent_instance;
+  AdwBin             parent_instance;
 
+  GtkStack          *stack;
   GtkListBox        *history;
   GtkScrolledWindow *scrolled_window;
   GtkAdjustment     *scroll_adjustment;
@@ -54,7 +54,7 @@ struct _CallsHistoryBox {
 
 };
 
-G_DEFINE_TYPE (CallsHistoryBox, calls_history_box, GTK_TYPE_STACK);
+G_DEFINE_TYPE (CallsHistoryBox, calls_history_box, ADW_TYPE_BIN);
 
 
 enum {
@@ -80,7 +80,7 @@ on_model_changed (GListModel      *model,
   else
     child_name = "history";
 
-  gtk_stack_set_visible_child_name (GTK_STACK (self), child_name);
+  gtk_stack_set_visible_child_name (self->stack, child_name);
 }
 
 
@@ -226,10 +226,13 @@ static void
 dispose (GObject *object)
 {
   CallsHistoryBox *self = CALLS_HISTORY_BOX (object);
+  GtkWidget *stack = GTK_WIDGET (self->stack);
 
   g_clear_signal_handler (&self->model_changed_handler_id, self->model);
   g_clear_object (&self->slice_model);
   g_clear_object (&self->model);
+
+  g_clear_pointer (&stack, gtk_widget_unparent);
 
   G_OBJECT_CLASS (calls_history_box_parent_class)->dispose (object);
 }
@@ -256,6 +259,7 @@ calls_history_box_class_init (CallsHistoryBoxClass *klass)
 
 
   gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Calls/ui/history-box.ui");
+  gtk_widget_class_bind_template_child (widget_class, CallsHistoryBox, stack);
   gtk_widget_class_bind_template_child (widget_class, CallsHistoryBox, history);
   gtk_widget_class_bind_template_child (widget_class, CallsHistoryBox, scrolled_window);
 }

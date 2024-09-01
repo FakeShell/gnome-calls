@@ -33,7 +33,7 @@
 
 
 struct _CallsCallSelectorItem {
-  GtkEventBox     parent_instance;
+  AdwBin     parent_instance;
 
   CuiCallDisplay *display;
 
@@ -42,7 +42,7 @@ struct _CallsCallSelectorItem {
   GtkLabel       *status;
 };
 
-G_DEFINE_TYPE (CallsCallSelectorItem, calls_call_selector_item, GTK_TYPE_EVENT_BOX);
+G_DEFINE_TYPE (CallsCallSelectorItem, calls_call_selector_item, ADW_TYPE_BIN);
 
 enum {
   PROP_0,
@@ -66,11 +66,11 @@ static void
 set_party (CallsCallSelectorItem *self)
 {
   CuiCall *call;
-  // FIXME: use HdyAvatar and the contact avatar
-  GtkWidget *image = gtk_image_new_from_icon_name ("avatar-default-symbolic", GTK_ICON_SIZE_DIALOG);
+  // FIXME: use AdwAvatar and the contact avatar
+  GtkWidget *image = gtk_image_new_from_icon_name ("avatar-default-symbolic");
 
-  gtk_box_pack_start (self->main_box, image, TRUE, TRUE, 0);
-  gtk_widget_show (image);
+  gtk_box_append (self->main_box, image);
+  gtk_widget_set_visible (image, TRUE);
 
   call = cui_call_display_get_call (self->display);
 

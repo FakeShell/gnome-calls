@@ -8,8 +8,8 @@ repository_url = "https://gitlab.gnome.org/World/Phosh/libcall-ui.git"
 website_url = "https://gitlab.gnome.org/World/Phosh/libcall-ui"
 dependencies = [
   "GObject-2.0",
-  "Gtk-3.0",
-  "Handy-1",
+  "Gtk-4.0",
+  "Adw-1",
 ]
 devhelp = true
 search_index = true
@@ -19,15 +19,15 @@ name = "GObject"
 description = "The base type system library"
 docs_url = "https://developer.gnome.org/gobject/stable"
 
-[dependencies."Gtk-3.0"]
+[dependencies."Gtk-4.0"]
 name = "GTK"
 description = "The GTK toolkit"
-docs_url = "https://docs.gtk.org/gtk3/"
+docs_url = "https://docs.gtk.org/gtk4/"
 
-[dependencies."Handy-1"]
-name = "libhandy"
+[dependencies."Adw-1"]
+name = "libadwaita"
 description = "UI library for mobile devices"
-docs_url = "https://gnome.pages.gitlab.gnome.org/libhandy/doc/1-latest/"
+docs_url = "https://gnome.pages.gitlab.gnome.org/libadwaita/doc/1-latest/"
 
 [dependencies."libcallaudio-0"]
 name = "libcallaudio"

@@ -35,9 +35,9 @@
 #include "calls-ui-call-data.h"
 #include "calls-util.h"
 
+#include <adwaita.h>
 #include <glib/gi18n.h>
 #include <glib-object.h>
-#include <handy.h>
 
 
 struct _CallsCallWindow {
@@ -45,7 +45,7 @@ struct _CallsCallWindow {
 
   GListStore             *calls;
 
-  CallsInAppNotification *in_app_notification;
+  AdwToastOverlay        *toast_overlay;
 
   GtkStack               *main_stack;
   GtkStack               *header_bar_stack;
@@ -129,7 +129,7 @@ call_selector_child_activated_cb (GtkFlowBox      *box,
                                   GtkFlowBoxChild *child,
                                   CallsCallWindow *self)
 {
-  GtkWidget *widget = gtk_bin_get_child (GTK_BIN (child));
+  GtkWidget *widget = gtk_flow_box_child_get_child (child);
   CallsCallSelectorItem *item = CALLS_CALL_SELECTOR_ITEM (widget);
   CuiCallDisplay *display = calls_call_selector_item_get_display (item);
 
@@ -218,8 +218,7 @@ remove_call (CallsCallWindow *self,
 
     if (display_call_data == ui_call_data) {
       g_list_store_remove (self->calls, i);
-      gtk_container_remove (GTK_CONTAINER (self->call_stack),
-                            GTK_WIDGET (display));
+      gtk_stack_remove (self->call_stack, GTK_WIDGET (display));
       break;
     }
   }
@@ -231,14 +230,11 @@ remove_call (CallsCallWindow *self,
 static void
 remove_calls (CallsCallWindow *self)
 {
-  GList *children, *child;
+  GtkWidget *child;
 
   /* Safely remove the call stack's children. */
-  children = gtk_container_get_children (GTK_CONTAINER (self->call_stack));
-  for (child = children; child != NULL; child = child->next)
-    gtk_container_remove (GTK_CONTAINER (self->call_stack),
-                          GTK_WIDGET (child->data));
-  g_list_free (children);
+  while ((child = gtk_stack_get_visible_child (self->call_stack)))
+    gtk_stack_remove (self->call_stack, child);
 
   g_list_store_remove_all (self->calls);
 
@@ -276,7 +272,7 @@ calls_call_window_init (CallsCallWindow *self)
   g_signal_connect_object (calls_manager_get_default (),
                            "message",
                            G_CALLBACK (calls_in_app_notification_show),
-                           self->in_app_notification,
+                           self->toast_overlay,
                            G_CONNECT_SWAPPED);
 
   g_signal_connect_object (calls_manager_get_default (),
@@ -322,7 +318,7 @@ calls_call_window_class_init (CallsCallWindowClass *klass)
   object_class->dispose = dispose;
 
   gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/Calls/ui/call-window.ui");
-  gtk_widget_class_bind_template_child (widget_class, CallsCallWindow, in_app_notification);
+  gtk_widget_class_bind_template_child (widget_class, CallsCallWindow, toast_overlay);
   gtk_widget_class_bind_template_child (widget_class, CallsCallWindow, main_stack);
   gtk_widget_class_bind_template_child (widget_class, CallsCallWindow, header_bar_stack);
   gtk_widget_class_bind_template_child (widget_class, CallsCallWindow, show_calls);

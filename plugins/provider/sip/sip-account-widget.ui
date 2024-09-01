@@ -1,228 +1,133 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
-  <requires lib="gtk+" version="3.24"/>
-  <requires lib="libhandy" version="1.0"/>
-  <template class="CallsSipAccountWidget" parent="GtkBox">
-    <property name="visible">True</property>
-    <property name="orientation">vertical</property>
-    
+  <template class="CallsSipAccountWidget" parent="AdwBin">
     <child>
-      <object class="HdyHeaderBar" id="header_add">
-        <property name="title" translatable="yes">Add Account</property>
-        <property name="show-close-button">True</property>
-        <child>
-          <object class="GtkButton" id="login_btn">
-            <property name="visible">True</property>
-            <property name="use-underline">True</property>
-            <property name="label" translatable="yes">_Log In</property>
-            <signal name="clicked" handler="on_login_clicked" swapped="yes"/>
-            <style>
-              <class name="suggested-action"/>
-            </style>
-          </object>
-          <packing>
-            <property name="pack_type">end</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkSpinner" id="spinner_add">
-            <property name="visible">True</property>
-          </object>
-          <packing>
-            <property name="pack_type">end</property>
-          </packing>
-        </child>
-      </object>
-    </child>
-    
-    <child>
-      <object class="HdyHeaderBar" id="header_edit">
-        <property name="visible">True</property>
-        <property name="show-close-button">True</property>
-        <property name="title" translatable="yes">Manage Account</property>
-        <child>
-          <object class="GtkButton" id="apply_btn">
-            <property name="visible">True</property>
-            <property name="use-underline">True</property>
-            <property name="label" translatable="yes">_Apply</property>
-            <signal name="clicked" handler="on_apply_clicked" swapped="yes"/>
-            <style>
-              <class name="suggested-action"/>
-            </style>
-          </object>
-          <packing>
-            <property name="pack_type">end</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkButton" id="delete_btn">
-            <property name="visible">True</property>
-            <property name="use-underline">True</property>
-            <property name="label" translatable="yes">_Delete</property>
-            <signal name="clicked" handler="on_delete_clicked" swapped="yes"/>
-            <style>
-              <class name="destructive-action"/>
-            </style>
-          </object>
-          <packing>
-            <property name="pack_type">end</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkSpinner" id="spinner_edit">
-            <property name="visible">True</property>
-          </object>
-          <packing>
-            <property name="pack_type">end</property>
-          </packing>
-        </child>
-      </object>
-    </child>
-    
-    <child>
-      <object class="HdyPreferencesPage">
-        <property name="visible">True</property>
-        <child>
-          <object class="HdyPreferencesGroup">
-            <property name="visible">True</property>
-            <child>
-              <object class="HdyActionRow">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Server</property>
-                <child>
-                  <object class="GtkEntry" id="host">
-                    <property name="visible">True</property>
-                    <property name="valign">center</property>
-                    <signal name="changed" handler="on_user_changed" swapped="yes"/>
-                  </object>
-                </child>
+      <object class="AdwToolbarView" id="child">
+        <child type="top">
+          <object class="AdwHeaderBar" id="header_add">
+            <child type="end">
+              <object class="GtkButton" id="login_btn">
+                <property name="use-underline">True</property>
+                <property name="label" translatable="yes">_Log In</property>
+                <signal name="clicked" handler="on_login_clicked" swapped="yes"/>
+                <style>
+                  <class name="suggested-action"/>
+                </style>
               </object>
+            </child>
+            <child type="end">
+              <object class="GtkSpinner" id="spinner_add"/>
             </child>
           </object>
         </child>
-        <child>
-          <object class="HdyPreferencesGroup">
-            <property name="visible">True</property>
-            <child>
-              <object class="HdyActionRow">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Display Name</property>
-                <property name="subtitle" translatable="yes">Optional</property>
-                <child>
-                  <object class="GtkEntry" id="display_name">
-                    <property name="visible">True</property>
-                    <property name="valign">center</property>
-                    <signal name="changed" handler="on_user_changed" swapped="yes"/>
-                  </object>
-                </child>
+        <child type="top">
+          <object class="AdwHeaderBar" id="header_edit">
+            <child type="end">
+              <object class="GtkButton" id="apply_btn">
+                <property name="use-underline">True</property>
+                <property name="label" translatable="yes">_Apply</property>
+                <signal name="clicked" handler="on_apply_clicked" swapped="yes"/>
+                <style>
+                  <class name="suggested-action"/>
+                </style>
               </object>
+            </child>
+            <child type="end">
+              <object class="GtkButton" id="delete_btn">
+                <property name="use-underline">True</property>
+                <property name="label" translatable="yes">_Delete</property>
+                <signal name="clicked" handler="on_delete_clicked" swapped="yes"/>
+                <style>
+                  <class name="destructive-action"/>
+                </style>
+              </object>
+            </child>
+            <child type="end">
+              <object class="GtkSpinner" id="spinner_edit"/>
             </child>
           </object>
         </child>
-        <child>
-          <object class="HdyPreferencesGroup">
-            <property name="visible">True</property>
+        <property name="content">
+          <object class="AdwPreferencesPage">
             <child>
-              <object class="HdyActionRow">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">User ID</property>
+              <object class="AdwPreferencesGroup">
                 <child>
-                  <object class="GtkEntry" id="user">
-                    <property name="visible">True</property>
-                    <property name="valign">center</property>
+                  <object class="AdwEntryRow" id="host">
+                    <property name="title" translatable="yes">Server</property>
                     <signal name="changed" handler="on_user_changed" swapped="yes"/>
                   </object>
                 </child>
               </object>
             </child>
             <child>
-              <object class="HdyActionRow">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Password</property>
+              <object class="AdwPreferencesGroup">
                 <child>
-                  <object class="GtkEntry" id="password">
-                    <property name="visible">True</property>
-                    <property name="valign">center</property>
-                    <property name="input-purpose">password</property>
-                    <property name="visibility">False</property>
-                    <property name="primary_icon_sensitive">False</property>
-                    <property name="secondary_icon_activatable">True</property>
-                    <property name="secondary_icon_name">view-reveal-symbolic</property>
-                    <property name="secondary_icon_sensitive">True</property>
+                  <object class="AdwEntryRow" id="display_name">
+                    <property name="title" translatable="yes">Display Name (Optional)</property>
                     <signal name="changed" handler="on_user_changed" swapped="yes"/>
-                    <signal name="icon-press" handler="on_password_visibility_changed" swapped="yes"/>
                   </object>
                 </child>
               </object>
             </child>
-          </object>
-        </child>
-        <child>
-          <object class="HdyPreferencesGroup">
-            <property name="visible">True</property>
             <child>
-              <object class="HdyActionRow">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Port</property>
+              <object class="AdwPreferencesGroup">
                 <child>
-                  <object class="GtkEntry" id="port">
-                    <property name="visible">True</property>
-                    <property name="valign">center</property>
+                  <object class="AdwEntryRow" id="user">
+                    <property name="title" translatable="yes">User ID</property>
+                    <signal name="changed" handler="on_user_changed" swapped="yes"/>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwPasswordEntryRow" id="password">
+                    <property name="title" translatable="yes">Password</property>
+                    <signal name="changed" handler="on_user_changed" swapped="yes"/>
+                  </object>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="AdwPreferencesGroup">
+                <child>
+                  <object class="AdwEntryRow" id="port">
+                    <property name="title" translatable="yes">Port</property>
                     <property name="input-purpose">digits</property>
                     <signal name="changed" handler="on_user_changed" swapped="yes"/>
                     <signal name="insert-text" handler="on_port_entry_insert_text" swapped="yes"/>
                     <signal name="insert-text" handler="on_port_entry_after_insert_text" swapped="yes" after="yes"/>
                   </object>
                 </child>
-              </object>
-            </child>
-            <child>
-              <object class="HdyComboRow" id="protocol">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Transport</property>
-                <signal name="notify::selected-index" handler="on_user_changed" swapped="yes"/>
-              </object>
-            </child>
-            <child>
-              <object class="HdyComboRow" id="media_encryption">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Media Encryption</property>
-                <signal name="notify::selected-index" handler="on_user_changed" swapped="yes"/>
-              </object>
-            </child>
-          </object>
-        </child>
-        <child>
-          <object class="HdyPreferencesGroup">
-            <property name="visible">True</property>
-            <child>
-              <object class="HdyActionRow">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Use for Phone Calls</property>
                 <child>
-                  <object class="GtkSwitch" id="tel_switch">
-                    <property name="visible">True</property>
-                    <property name="valign">center</property>
-                    <signal name="notify::active" handler="on_user_changed" swapped="yes"/>
+                  <object class="AdwComboRow" id="protocol">
+                    <property name="title" translatable="yes">Transport</property>
+                    <signal name="notify::selected-item" handler="on_user_changed" swapped="yes"/>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwComboRow" id="media_encryption">
+                    <property name="title" translatable="yes">Media Encryption</property>
+                    <signal name="notify::selected-item" handler="on_user_changed" swapped="yes"/>
                   </object>
                 </child>
               </object>
             </child>
             <child>
-              <object class="HdyActionRow">
-                <property name="visible">True</property>
-                <property name="title" translatable="yes">Automatically Connect</property>
+              <object class="AdwPreferencesGroup">
                 <child>
-                  <object class="GtkSwitch" id="auto_connect_switch">
-                    <property name="visible">True</property>
-                    <property name="valign">center</property>
+                  <object class="AdwSwitchRow" id="tel_switch">
+                    <property name="title" translatable="yes">Use for Phone Calls</property>
+                    <signal name="notify::active" handler="on_user_changed" swapped="yes"/>
+                  </object>
+                </child>
+                <child>
+                  <object class="AdwSwitchRow" id="auto_connect_switch">
+                    <property name="title" translatable="yes">Automatically Connect</property>
                     <signal name="notify::active" handler="on_user_changed" swapped="yes"/>
                   </object>
                 </child>
               </object>
             </child>
           </object>
-        </child>
+        </property>
       </object>
     </child>
   </template>
@@ -236,4 +141,3 @@
     </widgets>
   </object>
 </interface>
-

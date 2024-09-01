@@ -44,8 +44,8 @@ i18n_plugin = i18n.merge_file(
 
 dummy_deps = [
   dependency('gobject-2.0'),
-  dependency('gtk+-3.0'),
-  dependency('libpeas-1.0'),
+  dependency('gtk4', version: '>= @0@'.format(gtk_version)),
+  dependency('libpeas-2'),
 ]
 
 dummy_sources = files(

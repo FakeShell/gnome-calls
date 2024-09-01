@@ -10,8 +10,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+#include <adwaita.h>
 #include <folks/folks.h>
-#include <handy.h>
 
 #include "calls-contacts-row.h"
 #include "calls-contacts-provider.h"
@@ -36,18 +36,19 @@ insert_phonenumber (CallsContactsRow *self,
                     const gchar      *number)
 {
   GtkWidget *label = gtk_label_new (number);
-  GtkWidget *button = gtk_button_new_from_icon_name ("call-start-symbolic", GTK_ICON_SIZE_BUTTON);
+  GtkWidget *button = gtk_button_new_from_icon_name ("call-start-symbolic");
 
   gtk_widget_set_halign (label, GTK_ALIGN_START);
   gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
-  gtk_style_context_add_class (gtk_widget_get_style_context (label), "dim-label");
-  gtk_widget_show (label);
+  gtk_widget_add_css_class (label, "dim-label");
+  gtk_widget_set_visible (label, TRUE);
   gtk_grid_attach (GTK_GRID (self->grid), label, 1, self->n_phonenumbers, 1, 1);
 
   gtk_widget_set_valign (button, GTK_ALIGN_CENTER);
   gtk_actionable_set_action_name (GTK_ACTIONABLE (button), "app.dial");
   gtk_actionable_set_action_target (GTK_ACTIONABLE (button), "s", number, NULL);
-  gtk_widget_show (button);
+  gtk_widget_set_visible (button, TRUE);
+  gtk_widget_add_css_class (button, "flat");
   gtk_grid_attach_next_to (GTK_GRID (self->grid),
                            button,
                            label,
@@ -90,7 +91,9 @@ static void
 avatar_changed_cb (CallsContactsRow *self)
 {
   FolksAvatarDetails *avatar_details;
-  GLoadableIcon *icon;
+  GLoadableIcon *loadable_icon;
+  g_autoptr (GdkTexture) icon = NULL;
+  g_autoptr (GError) error = NULL;
 
   g_assert (FOLKS_IS_INDIVIDUAL (self->item));
 
@@ -98,12 +101,18 @@ avatar_changed_cb (CallsContactsRow *self)
   if (avatar_details == NULL)
     return;
 
-  icon = folks_avatar_details_get_avatar (avatar_details);
-
-  if (icon == NULL)
+  loadable_icon = folks_avatar_details_get_avatar (avatar_details);
+  if (!G_IS_FILE_ICON (loadable_icon)) {
     return;
+  }
 
-  hdy_avatar_set_loadable_icon (HDY_AVATAR (self->avatar), icon);
+  icon = gdk_texture_new_from_file (g_file_icon_get_file (G_FILE_ICON (loadable_icon)), &error);
+  if (icon == NULL) {
+    g_print ("Failed to load avatar icon: %s", error->message);
+    return;
+  }
+
+  adw_avatar_set_custom_image (ADW_AVATAR (self->avatar), GDK_PAINTABLE (icon));
 }
 
 static void

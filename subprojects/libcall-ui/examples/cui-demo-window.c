@@ -13,10 +13,10 @@
 
 
 struct _CuiDemoWindow {
-  HdyApplicationWindow parent_instance;
+  AdwApplicationWindow parent_instance;
 
   GtkImage            *theme_variant_image;
-  HdyLeaflet          *content_box;
+  AdwLeaflet          *content_box;
   GtkButton           *incoming_call;
   GtkButton           *outgoing_call;
 
@@ -26,32 +26,24 @@ struct _CuiDemoWindow {
   CuiDemoCall         *call1;
 };
 
-G_DEFINE_TYPE (CuiDemoWindow, cui_demo_window, HDY_TYPE_APPLICATION_WINDOW)
+G_DEFINE_TYPE (CuiDemoWindow, cui_demo_window, ADW_TYPE_APPLICATION_WINDOW)
 
 
 static void
 theme_variant_button_clicked_cb (CuiDemoWindow *self)
 {
-#if HDY_CHECK_VERSION (1, 6, 0)
-  HdyStyleManager *style_manager;
+  AdwStyleManager *style_manager;
   gboolean is_dark;
 
-  style_manager = hdy_style_manager_get_default ();
-  is_dark = hdy_style_manager_get_dark (style_manager);
+  style_manager = adw_style_manager_get_default ();
+  is_dark = adw_style_manager_get_dark (style_manager);
 
   g_debug ("let there be %s", is_dark ? "light" : "darkness");
 
-  hdy_style_manager_set_color_scheme (style_manager,
+  adw_style_manager_set_color_scheme (style_manager,
                                       is_dark ?
-                                      HDY_COLOR_SCHEME_FORCE_LIGHT :
-                                      HDY_COLOR_SCHEME_FORCE_DARK);
-#else
-  GtkSettings *settings = gtk_settings_get_default ();
-  gboolean prefer_dark_theme;
-
-  g_object_get (settings, "gtk-application-prefer-dark-theme", &prefer_dark_theme, NULL);
-  g_object_set (settings, "gtk-application-prefer-dark-theme", !prefer_dark_theme, NULL);
-#endif
+                                      ADW_COLOR_SCHEME_FORCE_LIGHT :
+                                      ADW_COLOR_SCHEME_FORCE_DARK);
 }
 
 
@@ -73,7 +65,7 @@ prefer_dark_theme_to_icon_name_cb (GBinding     *binding,
 static void
 back_clicked_cb (CuiDemoWindow *self)
 {
-  hdy_leaflet_navigate (self->content_box, HDY_NAVIGATION_DIRECTION_BACK);
+  adw_leaflet_navigate (self->content_box, ADW_NAVIGATION_DIRECTION_BACK);
 }
 
 
@@ -132,29 +124,17 @@ on_new_call_clicked (GtkButton     *button,
 
 
 static gboolean
-key_pressed_cb (GtkWidget     *sender,
-                GdkEvent      *event,
-                CuiDemoWindow *self)
+key_pressed_cb (CuiDemoWindow *self,
+                guint keyval,
+                guint keycode,
+                GdkModifierType state,
+                GtkEventControllerKey* controller)
 {
   GdkModifierType default_modifiers = gtk_accelerator_get_default_mod_mask ();
-  guint keyval;
-  GdkModifierType state;
-  GdkKeymap *keymap;
-  GdkEventKey *key_event = (GdkEventKey *) event;
-
-  gdk_event_get_state (event, &state);
-
-  keymap = gdk_keymap_get_for_display (gtk_widget_get_display (sender));
-
-  gdk_keymap_translate_keyboard_state (keymap,
-                                       key_event->hardware_keycode,
-                                       state,
-                                       key_event->group,
-                                       &keyval, NULL, NULL, NULL);
 
   if ((keyval == GDK_KEY_q || keyval == GDK_KEY_Q) &&
       (state & default_modifiers) == GDK_CONTROL_MASK) {
-    gtk_widget_destroy (GTK_WIDGET (self));
+    gtk_window_destroy (GTK_WINDOW (self));
 
     return TRUE;
   }
@@ -178,10 +158,10 @@ on_dial (CuiDemoWindow *self, const char number[], GtkWidget *sender)
                                    "Dialling %s", number);
 
   g_signal_connect_swapped (dialog, "response",
-                            G_CALLBACK (gtk_widget_destroy),
+                            G_CALLBACK (gtk_window_destroy),
                             dialog);
 
-  gtk_widget_show_all (dialog);
+  gtk_window_present (GTK_WINDOW (dialog));
 }
 
 
@@ -190,7 +170,7 @@ on_visible_child_changed (GObject       *sender,
                           GParamSpec    *pspec,
                           CuiDemoWindow *self)
 {
-  hdy_leaflet_navigate (self->content_box, HDY_NAVIGATION_DIRECTION_FORWARD);
+  adw_leaflet_navigate (self->content_box, ADW_NAVIGATION_DIRECTION_FORWARD);
 }
 
 
@@ -219,25 +199,22 @@ cui_demo_window_class_init (CuiDemoWindowClass *klass)
 static void
 cui_demo_window_init (CuiDemoWindow *self)
 {
-#if HDY_CHECK_VERSION (1, 6, 0)
-  HdyStyleManager *style_manager = hdy_style_manager_get_default();
-#else
-  GtkSettings *settings = gtk_settings_get_default ();
-#endif
+  AdwStyleManager *style_manager = adw_style_manager_get_default();
+
+  GtkEventController *controller = gtk_event_controller_key_new ();
+  g_signal_connect_swapped (controller, "key-pressed", G_CALLBACK (key_pressed_cb), self);
 
   gtk_widget_init_template (GTK_WIDGET (self));
 
-#if HDY_CHECK_VERSION (1, 6, 0)
   g_object_bind_property_full (style_manager, "dark",
-#else
-  g_object_bind_property_full (settings, "gtk-application-prefer-dark-theme",
-#endif
                                self->theme_variant_image, "icon-name",
                                G_BINDING_SYNC_CREATE,
                                prefer_dark_theme_to_icon_name_cb,
                                NULL,
                                NULL,
                                NULL);
+
+  gtk_widget_add_controller (GTK_WIDGET (self), controller);
 }
 
 CuiDemoWindow *

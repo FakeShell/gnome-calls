@@ -1,121 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.22.1 -->
 <interface>
-  <requires lib="gtk+" version="3.20"/>
   <template class="CallsCallRecordRow" parent="GtkListBoxRow">
-    <property name="visible">True</property>
     <property name="activatable">False</property>
     <property name="selectable">False</property>
-    <child>
-      <object class="GtkEventBox" id="event_box">
-        <property name="visible">True</property>
+    <property name="child">
+      <object class="GtkBox">
+        <child>
+          <object class="AdwAvatar" id="avatar">
+            <property name="margin-start">8</property>
+            <property name="margin_top">8</property>
+            <property name="margin_bottom">8</property>
+            <property name="size">48</property>
+            <property name="text" bind-source="target" bind-property="label" bind-flags="sync-create"/>
+            <property name="show-initials">True</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkImage" id="type">
+            <property name="margin-start">8</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="target">
+            <property name="margin-start">10</property>
+            <property name="ellipsize">middle</property>
+          </object>
+        </child>
         <child>
           <object class="GtkBox">
-            <property name="visible">True</property>
-            <child>
-              <object class="HdyAvatar" id="avatar">
-                <property name="visible">True</property>
-                <property name="margin_left">8</property>
-                <property name="margin_top">8</property>
-                <property name="margin_bottom">8</property>
-                <property name="size">48</property>
-                <property name="text" bind-source="target" bind-property="label" bind-flags="sync-create"></property>
-                <property name="show-initials">True</property>
-              </object>
-              <packing>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkImage" id="type">
-                <property name="visible">True</property>
-                <property name="margin_left">8</property>
-              </object>
-              <packing>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel" id="target">
-                <property name="visible">True</property>
-                <property name="margin_left">10</property>
-                <property name="ellipsize">middle</property>
-              </object>
-              <packing>
-                <property name="position">2</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="button">
-                <property name="visible">True</property>
-                <property name="margin_left">12</property>
-                <property name="margin_right">8</property>
-                <property name="margin_top">8</property>
-                <property name="margin_bottom">8</property>
-                <property name="halign">center</property>
-                <property name="valign">center</property>
-                <style>
-                  <class name="image-button"/>
-                </style>
-                <child internal-child="accessible">
-                  <object class="AtkObject" id="a11y-call">
-                    <property name="accessible-name" translatable="yes" comments="Translators: This is a verb, not a noun. Call the number of the currently selected row.">Call</property>
-                  </object>
-                </child>
-                <child>
-                  <object class="GtkImage">
-                    <property name="visible">True</property>
-                    <property name="icon-name">call-start-symbolic</property>
-                  </object>
-                </child>
-              </object>
-              <packing>
-                <property name="pack_type">end</property>
-                <property name="position">3</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkLabel" id="time">
-                <property name="visible">True</property>
-                <property name="margin_left">8</property>
-                <property name="justify">right</property>
-                <style>
-                  <class name="dim-label"/>
-                </style>
-                <attributes>
-                  <attribute name="scale" value="0.7"/>
-                </attributes>
-              </object>
-              <packing>
-                <property name="pack_type">end</property>
-                <property name="position">4</property>
-              </packing>
-            </child>
+            <property name="hexpand">True</property>
+          </object>
+        </child>
+        <child>
+          <object class="GtkLabel" id="time">
+            <property name="margin-start">8</property>
+            <property name="justify">right</property>
+            <style>
+              <class name="dim-label"/>
+            </style>
+            <attributes>
+              <attribute name="scale" value="0.7"></attribute>
+            </attributes>
+          </object>
+        </child>
+        <child>
+          <object class="GtkButton" id="button">
+            <property name="margin-start">12</property>
+            <property name="margin-end">8</property>
+            <property name="margin_top">8</property>
+            <property name="margin_bottom">8</property>
+            <property name="halign">center</property>
+            <property name="valign">center</property>
+            <property name="tooltip-text">Call</property>
+            <property name="icon-name">call-start-symbolic</property>
+            <style>
+              <class name="flat"/>
+            </style>
           </object>
         </child>
       </object>
-    </child>
+    </property>
   </template>
   <menu id="context_menu">
     <section>
       <item>
         <attribute name="label" translatable="yes">_Delete Call</attribute>
-        <attribute name="action">delete-call</attribute>
+        <attribute name="action">row-history.delete-call</attribute>
       </item>
       <item>
-        <!-- Translators: This is a phone number -->
         <attribute name="label" translatable="yes">_Copy number</attribute>
-        <attribute name="action">copy-number</attribute>
+        <attribute name="action">row-history.copy-number</attribute>
         <attribute name="hidden-when">action-disabled</attribute>
       </item>
       <item>
         <attribute name="label" translatable="yes">_Add contact</attribute>
-        <attribute name="action">new-contact</attribute>
+        <attribute name="action">row-history.new-contact</attribute>
         <attribute name="hidden-when">action-disabled</attribute>
       </item>
       <item>
         <attribute name="label" translatable="yes">_Send SMS</attribute>
-        <attribute name="action">new-sms</attribute>
+        <attribute name="action">row-history.new-sms</attribute>
         <attribute name="hidden-when">action-disabled</attribute>
       </item>
     </section>

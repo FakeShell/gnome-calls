@@ -44,9 +44,7 @@ run script which sets up the environment for you:
 
 *Note:* Invoking the run script might terminate after a few seconds and
 instead only activates an already running instance of `gnome-calls`.
-In this case you want to `killall gnome-calls` until it says `process not found`
-(you have to kill more than once because the process might automatically get restarted)
-and only then use the run script.
+In this case you want to `systemctl --user stop calls` to stop it.
 
 ### Debugging
 
@@ -129,7 +127,7 @@ For more information see [here](https://modemmanager.org/docs/modemmanager/debug
 
 ### SIP
 
-This plugin uses the libsofia-sip library for SIP signalling and
+This plugin uses the [sofia-sip][] library for SIP signalling and
 GStreamer for media handling. It supports multiple SIP accounts and
 currently one active call at a time (subject to change).
 
@@ -156,3 +154,5 @@ incoming call you should send a `USR1` signal to the calls process:
 
 This plugin is not in active development anymore, so your mileage may vary.
 See [here](ofono.md) for more information.
+
+[sofia-sip]: https://github.com/BelledonneCommunications/sofia-sip

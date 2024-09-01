@@ -22,15 +22,20 @@
 project(
   'calls',
   'c', 'vala',
-  version: '46.3',
+  version: '47.rc.1',
   license: 'GPLv3+',
-  meson_version: '>= 0.56.0',
+  meson_version: '>= 1.0',
   default_options: [
     'warning_level=1',
     'buildtype=debugoptimized',
     'c_std=gnu11'
   ]
 )
+
+gtk_version = '4.12'
+gtk_version_arr = gtk_version.split('.')
+gtk_major = gtk_version_arr[0]
+gtk_minor = gtk_version_arr[1]
 
 calls_id = 'org.gnome.Calls'
 calls_homepage = 'https://gitlab.gnome.org/GNOME/calls'
@@ -53,6 +58,16 @@ libcall_ui_dep = dependency('call-ui',
   fallback:  ['libcall-ui', 'libcall_ui_dep'],
   default_options: ['tests=false', 'examples=false', 'gtk_doc=false'],
 )
+
+systemd_user_unit_dir = get_option('systemd_user_unit_dir')
+systemd_dep = dependency('systemd', required: false)
+if systemd_user_unit_dir == ''
+  if systemd_dep.found()
+    systemd_user_unit_dir = systemd_dep.get_variable('systemd_user_unit_dir')
+  else
+    systemd_user_unit_dir = prefix / libdir / 'systemd/user'
+  endif
+endif
 
 config_data = configuration_data()
 config_data.set_quoted('APP_ID', calls_id)
@@ -109,8 +124,10 @@ test_c_args = [
   '-Wtype-limits',
   '-Wunused-function',
   '-Wunused-variable',
-  '-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_64',
+  '-DGLIB_VERSION_MIN_REQUIRED=GLIB_VERSION_2_70',
   '-DGLIB_VERSION_MAX_ALLOWED=GLIB_VERSION_2_70',
+  '-DGDK_VERSION_MIN_REQUIRED=GDK_VERSION_@0@_@1@'.format(gtk_major, gtk_minor),
+  '-DGDK_VERSION_MAX_ALLOWED=GDK_VERSION_@0@_@1@'.format(gtk_major, gtk_minor),
   # see https://gitlab.gnome.org/GNOME/evolution-data-server/-/issues/332
   '-DEDS_DISABLE_DEPRECATED',
   # in preparation for the switch to Gtk4 we should make sure not to use deprecated symbols
@@ -133,12 +150,20 @@ add_project_arguments(
   language: 'c'
 )
 
+summary({
+  'Build documentation': get_option('gtk_doc'),
+  'Build manpages': get_option('manpages'),
+  'Build tests': get_option('tests'),
+  'Use gstreamers debug API': get_option('gst_debug'),
+  'Directory for systemd user units': systemd_user_unit_dir,
+})
+
 subdir('po')
+subdir('data')
 subdir('src')
 subdir('plugins')
 subdir('tests')
 subdir('doc')
-subdir('data')
 
 # gnome.post_install() is available since meson 0.59.0
 # Distributions use their own tooling (e.g. postinst, triggers, etc)

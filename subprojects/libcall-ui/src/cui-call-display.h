@@ -10,13 +10,14 @@
 
 #include "cui-call.h"
 
+#include <adwaita.h>
 #include <gtk/gtk.h>
 
 G_BEGIN_DECLS
 
 #define CUI_TYPE_CALL_DISPLAY (cui_call_display_get_type ())
 
-G_DECLARE_FINAL_TYPE (CuiCallDisplay, cui_call_display, CUI, CALL_DISPLAY, GtkOverlay);
+G_DECLARE_FINAL_TYPE (CuiCallDisplay, cui_call_display, CUI, CALL_DISPLAY, AdwBin);
 
 CuiCallDisplay *cui_call_display_new        (CuiCall *call);
 void            cui_call_display_set_call   (CuiCallDisplay *self,

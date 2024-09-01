@@ -11,6 +11,7 @@
 #include "cui-demo-call.h"
 
 #include <glib/gi18n.h>
+#include <gdk/gdk.h>
 
 
 #define AVATAR_ICON TOP_SOURCE_DIR "/examples/images/cat.jpg"
@@ -32,7 +33,7 @@ static GParamSpec *props[PROP_LAST_PROP];
 struct _CuiDemoCall {
   GObject        parent_instance;
 
-  GLoadableIcon *avatar_icon;
+  GdkTexture    *avatar_icon;
   gchar         *id;
   gchar         *display_name;
   CuiCallState   state;
@@ -196,12 +197,12 @@ cui_demo_call_class_init (CuiDemoCallClass *klass)
 }
 
 
-static GLoadableIcon *
+static GdkPaintable *
 cui_demo_call_get_avatar_icon (CuiCall *call)
 {
   g_return_val_if_fail (CUI_IS_DEMO_CALL (call), NULL);
 
-  return CUI_DEMO_CALL (call)->avatar_icon;
+  return GDK_PAINTABLE (CUI_DEMO_CALL (call)->avatar_icon);
 }
 
 
@@ -397,13 +398,15 @@ static void
 cui_demo_call_init (CuiDemoCall *self)
 {
   g_autoptr (GFile) file = g_file_new_for_path (AVATAR_ICON);
+  GError *err = NULL;
 
   self->display_name = "John Doe";
   self->id = "0800 1234";
   self->can_dtmf = TRUE;
-  self->avatar_icon = G_LOADABLE_ICON (g_file_icon_new (file));
+  self->avatar_icon = gdk_texture_new_from_file (file, &err);
 
-  g_assert (G_IS_LOADABLE_ICON (self->avatar_icon));
+  g_assert (err == NULL);
+  g_assert (GDK_IS_TEXTURE (self->avatar_icon));
 }
 
 
