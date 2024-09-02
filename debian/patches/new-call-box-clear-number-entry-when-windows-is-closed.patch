@@ -1,0 +1,38 @@
+From: https://gitlab.gnome.org/GNOME/calls/-/merge_requests/717
+From: Chris Talbot <chris@talbothome.com>
+Date: Tue, 6 Feb 2024 20:52:52 -0700
+Subject: new-call-box: clear number entry when windows is closed
+
+---
+ src/calls-new-call-box.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/src/calls-new-call-box.c b/src/calls-new-call-box.c
+index fb95585..d6d3c64 100644
+--- a/src/calls-new-call-box.c
++++ b/src/calls-new-call-box.c
+@@ -311,6 +311,13 @@ calls_new_call_box_get_property (GObject    *object,
+   }
+ }
+
++static void
++on_main_window_closed (CallsNewCallBox *self)
++{
++  cui_dialpad_set_number (self->dialpad, "");
++  gtk_editable_set_text (GTK_EDITABLE (self->address_entry), "");
++}
++
+ static void
+ calls_new_call_box_init (CallsNewCallBox *self)
+ {
+@@ -330,6 +337,11 @@ calls_new_call_box_init (CallsNewCallBox *self)
+                            G_CALLBACK (origin_count_changed_cb),
+                            self,
+                            G_CONNECT_SWAPPED);
++  g_signal_connect_swapped (g_application_get_default (),
++                            "main-window-closed",
++                            G_CALLBACK (on_main_window_closed),
++                            self);
++
+   origin_count_changed_cb (self);
+ }

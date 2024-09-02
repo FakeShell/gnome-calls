@@ -1,0 +1,71 @@
+From: https://gitlab.gnome.org/GNOME/calls/-/merge_requests/717
+From: Chris Talbot <chris@talbothome.com>
+Date: Tue, 6 Feb 2024 20:29:40 -0700
+Subject: application: add signal for main window hiding
+
+---
+ src/calls-application.c | 29 ++++++++++++++++++++++++++++-
+ 1 file changed, 28 insertions(+), 1 deletion(-)
+
+diff --git a/src/calls-application.c b/src/calls-application.c
+index e4485e5..e09d607 100644
+--- a/src/calls-application.c
++++ b/src/calls-application.c
+@@ -80,6 +80,12 @@ struct _CallsApplication {
+
+ G_DEFINE_TYPE (CallsApplication, calls_application, ADW_TYPE_APPLICATION);
+
++enum {
++  SIGNAL_MAIN_WINDOW_CLOSED,
++  N_SIGNALS
++};
++
++static guint signals[N_SIGNALS];
+
+ static void start_proper (CallsApplication *self);
+
+@@ -623,6 +629,16 @@ on_db_done (CallsRecordStore *store,
+     g_warning ("Database did not get opened");
+ }
+
++static gboolean
++on_main_window_hidden (GtkWidget *widget,
++                       gpointer data)
++{
++  CallsApplication *self = CALLS_APPLICATION (g_application_get_default ());
++
++  g_signal_emit_by_name (self, "main-window-closed", 0);
++
++  return FALSE;
++}
+
+ static void
+ start_proper (CallsApplication *self)
+@@ -670,8 +686,12 @@ start_proper (CallsApplication *self)
+                            G_CALLBACK (notify_window_visible_cb),
+                            self,
+                            G_CONNECT_AFTER);
+-}
+
++  g_signal_connect (G_OBJECT (self->main_window),
++                    "hide",
++                    G_CALLBACK (on_main_window_hidden),
++                    NULL);
++}
+
+ static void
+ activate (GApplication *application)
+@@ -773,6 +793,13 @@ calls_application_class_init (CallsApplicationClass *klass)
+   GApplicationClass *application_class = G_APPLICATION_CLASS (klass);
+   GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
++  signals [SIGNAL_MAIN_WINDOW_CLOSED] =
++    g_signal_new ("main-window-closed",
++                  G_TYPE_FROM_CLASS (klass),
++                  G_SIGNAL_RUN_LAST,
++                  0, NULL, NULL, NULL,
++                  G_TYPE_NONE, 0);
++
+   object_class->finalize = finalize;
+
+   application_class->handle_local_options = calls_application_handle_local_options;

@@ -1,0 +1,37 @@
+From: https://gitlab.gnome.org/GNOME/calls/-/merge_requests/717
+From: Chris Talbot <chris@talbothome.com>
+Date: Tue, 6 Feb 2024 20:52:32 -0700
+Subject: contacts-box: clear entry if window is closed
+
+---
+ src/calls-contacts-box.c | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/src/calls-contacts-box.c b/src/calls-contacts-box.c
+index e79fd37..064bb5f 100644
+--- a/src/calls-contacts-box.c
++++ b/src/calls-contacts-box.c
+@@ -148,6 +148,11 @@ contacts_sort_func (FolksIndividual *a,
+   return fav_a ? -1 : 1;
+ }
+
++static void
++on_main_window_closed (CallsContactsBox *self)
++{
++  gtk_editable_set_text (GTK_EDITABLE (self->search_entry), "");
++}
+
+ static void
+ calls_contacts_box_dispose (GObject *object)
+@@ -234,6 +239,11 @@ calls_contacts_box_init (CallsContactsBox *self)
+                             G_CALLBACK (search_changed_cb),
+                             self);
+
++  g_signal_connect_swapped (g_application_get_default (),
++                            "main-window-closed",
++                            G_CALLBACK (on_main_window_closed),
++                            self);
++
+   if (!gee_collection_get_is_empty (individuals))
+     calls_contacts_provider_consume_iter_on_idle (gee_iterable_iterator (GEE_ITERABLE (individuals)),
+                                                   (IdleCallback) contacts_provider_added,
