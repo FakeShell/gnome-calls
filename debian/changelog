@@ -1,4 +1,4 @@
-gnome-calls (47~rc.1-1) unstable; urgency=medium
+gnome-calls (47~rc.1-1) UNRELEASED; urgency=medium
 
   * New upstream release
   * d/gbp.conf: Sign tags by default
