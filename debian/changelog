@@ -1,8 +1,9 @@
-gnome-calls (47.0-1) UNRELEASED; urgency=medium
+gnome-calls (47.0-1) unstable; urgency=medium
 
   * New upstream release
+  * d/patches: Remove patches applied in new upstream release
 
- -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sat, 14 Sep 2024 23:17:15 +0200
+ -- Evangelos Ribeiro Tzaras <devrtz-debian@fortysixandtwo.eu>  Sat, 14 Sep 2024 23:24:43 +0200
 
 gnome-calls (47~rc.1-1) unstable; urgency=medium
 
