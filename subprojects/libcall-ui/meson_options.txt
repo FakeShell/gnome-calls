@@ -6,6 +6,10 @@ option('examples',
        type: 'boolean', value: true,
        description: 'Whether to build the examples')
 
+option('install-examples',
+       type: 'boolean', value: false,
+       description: 'Whether to install the examples')
+
 option('gtk_doc',
        type: 'boolean', value: false,
        description: 'Whether to generate the API reference')

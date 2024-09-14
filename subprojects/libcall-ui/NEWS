@@ -1,3 +1,17 @@
+libcall-ui 0.2.1
+----------------
+Released: September 2024
+* Fix keypad layout in RTL locales
+* Modernize demo application
+* Contributors:
+    * Dexter Reed
+    * Evangelos Ribeiro Tzaras
+    * Guido Günther
+* UI translations:
+    * Daniel Șerbănescu (ro)
+    * Rafael Fontenelle (pt_BR)
+    * Sabri Ünal (tr)
+
 libcall-ui 0.2.0
 ----------------
 Released: April 2024

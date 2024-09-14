@@ -22,6 +22,8 @@
  *
  */
 
+#define G_LOG_DOMAIN "CallsCallRecordRow"
+
 #include "calls-call-record-row.h"
 #include "calls-best-match.h"
 #include "calls-contacts-provider.h"
@@ -130,7 +132,9 @@ static gboolean date_change_cb (CallsCallRecordRow *self);
 static void
 setup_date_change_timeout (CallsCallRecordRow *self)
 {
-  GDateTime *gnow, *gnextday, *gtomorrow;
+  g_autoptr (GDateTime) gnow = NULL;
+  g_autoptr (GDateTime) gnextday = NULL;
+  g_autoptr (GDateTime) gtomorrow = NULL;
   struct timeval now, tomorrow, delta;
   int err;
   guint interval;
@@ -140,7 +144,6 @@ setup_date_change_timeout (CallsCallRecordRow *self)
 
   // Get the next day
   gnextday = g_date_time_add_days (gnow, 1);
-  g_date_time_unref (gnow);
 
   // Get the start of the next day
   gtomorrow =
@@ -151,12 +154,10 @@ setup_date_change_timeout (CallsCallRecordRow *self)
                      0,
                      0,
                      0.0);
-  g_date_time_unref (gnextday);
 
   // Convert to a timeval
   tomorrow.tv_sec = g_date_time_to_unix (gtomorrow);
   tomorrow.tv_usec = 0;
-  g_date_time_unref (gtomorrow);
 
   // Get the precise time now
   err = gettimeofday (&now, NULL);
@@ -186,16 +187,15 @@ setup_date_change_timeout (CallsCallRecordRow *self)
 static gboolean
 date_change_cb (CallsCallRecordRow *self)
 {
-  GDateTime *end;
+  g_autoptr (GDateTime) end = NULL;
   gboolean final;
 
-  g_object_get (G_OBJECT (self->record),
+  g_object_get (self->record,
                 "end", &end,
                 NULL);
   g_assert (end != NULL);
 
   update_time_text (self, end, &final);
-  g_date_time_unref (end);
 
   if (final)
     self->date_change_timeout = 0;
@@ -231,9 +231,9 @@ notify_time_cb (CallsCallRecordRow *self,
                 GParamSpec         *pspec,
                 CallsCallRecord    *record)
 {
+  g_autoptr (GDateTime) answered = NULL;
+  g_autoptr (GDateTime) end = NULL;
   gboolean inbound;
-  GDateTime *answered;
-  GDateTime *end;
 
   g_object_get (G_OBJECT (self->record),
                 "inbound", &inbound,
@@ -243,14 +243,11 @@ notify_time_cb (CallsCallRecordRow *self,
 
   update_time (self, inbound, answered, end);
 
-  if (answered) {
-    g_date_time_unref (answered);
+  if (answered)
     calls_clear_signal (record, &self->answered_notify_handler_id);
-  }
-  if (end) {
-    g_date_time_unref (end);
+
+  if (end)
     calls_clear_signal (record, &self->end_notify_handler_id);
-  }
 }
 
 
@@ -387,6 +384,11 @@ on_long_pressed (GtkGestureLongPress *gesture,
                  gdouble              y,
                  GtkWidget           *self)
 {
+  if (!gtk_widget_get_realized (self)) {
+    g_warning ("widget is not realized, why does it emit 'pressed'? Aborting..");
+    return;
+  }
+
   context_menu (self, NULL);
 }
 
@@ -399,6 +401,7 @@ calls_call_record_row_button_press_event (GtkGestureClick* controller,
                                           GtkWidget *self)
 {
   GdkEvent *event = gtk_event_controller_get_current_event (GTK_EVENT_CONTROLLER (controller));
+
   if (gdk_event_triggers_context_menu (event)) {
     context_menu (self, (GdkEvent *) event);
   }
@@ -431,8 +434,8 @@ constructed (GObject *object)
 {
   CallsCallRecordRow *self = CALLS_CALL_RECORD_ROW (object);
   gboolean inbound;
-  GDateTime *answered;
-  GDateTime *end;
+  g_autoptr (GDateTime) answered = NULL;
+  g_autoptr (GDateTime) end = NULL;
   g_autofree char *protocol = NULL;
   g_autofree char *action_name = NULL;
   g_autofree char *target = NULL;
@@ -463,8 +466,6 @@ constructed (GObject *object)
                                       "(ss)", target, "");
 
   setup_time (self, inbound, answered, end);
-  calls_date_time_unref (answered);
-  calls_date_time_unref (end);
 
   setup_contact (self);
 }
@@ -498,7 +499,7 @@ dispose (GObject *object)
   g_clear_object (&self->contact);
   g_clear_object (&self->action_map);
 
-  calls_clear_source (&self->date_change_timeout);
+  g_clear_handle_id (&self->date_change_timeout, g_source_remove);
   calls_clear_signal (self->record, &self->answered_notify_handler_id);
   calls_clear_signal (self->record, &self->end_notify_handler_id);
   g_clear_object (&self->record);
@@ -657,12 +658,16 @@ calls_call_record_row_init (CallsCallRecordRow *self)
 
   gesture = gtk_gesture_click_new ();
   gtk_gesture_single_set_button (GTK_GESTURE_SINGLE (gesture), GDK_BUTTON_SECONDARY);
-  g_signal_connect (gesture, "pressed", G_CALLBACK (calls_call_record_row_button_press_event), self);
+  g_signal_connect_object (gesture, "pressed",
+                           G_CALLBACK (calls_call_record_row_button_press_event),
+                           self, G_CONNECT_AFTER);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (gesture));
 
   gesture = gtk_gesture_long_press_new ();
   gtk_gesture_single_set_touch_only (GTK_GESTURE_SINGLE (gesture), TRUE);
-  g_signal_connect (gesture, "pressed", G_CALLBACK (on_long_pressed), self);
+  g_signal_connect_object (gesture, "pressed",
+                           G_CALLBACK (on_long_pressed),
+                           self, G_CONNECT_AFTER);
   gtk_widget_add_controller (GTK_WIDGET (self), GTK_EVENT_CONTROLLER (gesture));
 }
 

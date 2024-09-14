@@ -6,8 +6,6 @@
     <file preprocess="xml-stripblanks">icons/scalable/actions/call-arrow-outgoing-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/status/dark-mode-symbolic.svg</file>
     <file preprocess="xml-stripblanks">icons/scalable/status/light-mode-symbolic.svg</file>
-  </gresource>
-  <gresource prefix="/org/gnome/CallUI/Demo/ui">
     <file preprocess="xml-stripblanks">cui-demo-window.ui</file>
     <file compressed="true">style.css</file>
   </gresource>

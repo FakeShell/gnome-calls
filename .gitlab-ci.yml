@@ -1,6 +1,9 @@
 include:
  - 'https://source.puri.sm/Librem5/librem5-ci/raw/master/librem5-pipeline-definitions.yml'
  - 'https://gitlab.gnome.org/GNOME/citemplates/raw/master/flatpak/flatpak_ci_initiative.yml'
+ - project: 'guidog/meta-phosh'
+   ref: '2aeb9bfe2b230ca3aeda8275e42c95f94f6723ca'
+   file: '/ci/phosh-common-jobs.yml'
 
 stages:
  - build
@@ -8,6 +11,15 @@ stages:
  - package
  - test-package
  - deploy
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+    # Don't trigger a branch pipeline if there is an open MR
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH
 
 variables:
   DEBIAN_IMAGE: $CI_REGISTRY/gnome/calls/debian:v0.0.2024-08-30
@@ -70,16 +82,14 @@ build-gtkdoc:
       - _reference
 
 check-po:
-  extends: build:native
   stage: test
+  extends: .phosh-check-po
   dependencies:
     - build:native
-  script:
-    # barf on untranslated C or UI files. Seems intltool
-    # can't be told to exit with non-zero exit status
-    # in this case
-    - cd po/
-    - intltool-update -m 2>&1 | grep -qs '/.*\.\(c|ui\)' && { intltool-update -m; exit 1; } || exit 0
+
+check-consistency:
+  stage: test
+  extends: .phosh-check-consistency
 
 package:deb-debian-trixie:arm64:
   variables:
