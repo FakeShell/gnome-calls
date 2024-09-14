@@ -8,22 +8,13 @@
 #include "cui-demo-window.h"
 
 static void
-startup (GtkApplication *app)
+startup (AdwApplication *app)
 {
-  GtkCssProvider *css_provider = gtk_css_provider_new ();
-
-  adw_init ();
   cui_init (FALSE);
-
-  gtk_css_provider_load_from_resource (css_provider, "/org/gnome/CallUI/Demo/ui/style.css");
-  gtk_style_context_add_provider_for_display (gdk_display_get_default (),
-                                              GTK_STYLE_PROVIDER (css_provider),
-                                              GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-  g_object_unref (css_provider);
 }
 
 static void
-show_window (GtkApplication *app)
+show_window (AdwApplication *app)
 {
   CuiDemoWindow *window;
 
@@ -36,13 +27,13 @@ int
 main (int    argc,
       char **argv)
 {
-  GtkApplication *app;
+  AdwApplication *app;
   int status;
 
   /* This is enough since libcall-ui performs the bindtextdomain */
   textdomain (GETTEXT_PACKAGE);
 
-  app = gtk_application_new ("org.gnome.CallUI.Demo",
+  app = adw_application_new ("org.gnome.CallUI.Demo",
 #if GLIB_CHECK_VERSION (2, 73, 3)
                              G_APPLICATION_DEFAULT_FLAGS);
 #else

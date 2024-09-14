@@ -15,10 +15,12 @@
 struct _CuiDemoWindow {
   AdwApplicationWindow parent_instance;
 
+  AdwNavigationSplitView *split_view;
+
   GtkImage            *theme_variant_image;
-  AdwLeaflet          *content_box;
   GtkButton           *incoming_call;
   GtkButton           *outgoing_call;
+  GtkStack            *stack;
 
   CuiCallDisplay      *call_display;
   CuiDialpad          *dialpad;
@@ -28,6 +30,11 @@ struct _CuiDemoWindow {
 
 G_DEFINE_TYPE (CuiDemoWindow, cui_demo_window, ADW_TYPE_APPLICATION_WINDOW)
 
+static void
+notify_visible_child_cb (CuiDemoWindow *self)
+{
+  adw_navigation_split_view_set_show_content (self->split_view, TRUE);
+}
 
 static void
 theme_variant_button_clicked_cb (CuiDemoWindow *self)
@@ -59,13 +66,6 @@ prefer_dark_theme_to_icon_name_cb (GBinding     *binding,
                       "dark-mode-symbolic");
 
   return TRUE;
-}
-
-
-static void
-back_clicked_cb (CuiDemoWindow *self)
-{
-  adw_leaflet_navigate (self->content_box, ADW_NAVIGATION_DIRECTION_BACK);
 }
 
 
@@ -145,32 +145,17 @@ key_pressed_cb (CuiDemoWindow *self,
 static void
 on_dial (CuiDemoWindow *self, const char number[], GtkWidget *sender)
 {
-  GtkDialogFlags flags;
-  GtkWidget *dialog;
+  AdwDialog *dialog;
 
   g_debug ("Dialling %s", number);
 
-  flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT | GTK_DIALOG_USE_HEADER_BAR;
-  dialog = gtk_message_dialog_new (GTK_WINDOW (self),
-                                   flags,
-                                   GTK_MESSAGE_INFO,
-                                   GTK_BUTTONS_OK,
-                                   "Dialling %s", number);
+  dialog = adw_alert_dialog_new (_("Dialling"), NULL);
 
-  g_signal_connect_swapped (dialog, "response",
-                            G_CALLBACK (gtk_window_destroy),
-                            dialog);
+  adw_alert_dialog_format_body (ADW_ALERT_DIALOG (dialog), _("Dialling number: %s"), number);
 
-  gtk_window_present (GTK_WINDOW (dialog));
-}
+  adw_alert_dialog_add_response (ADW_ALERT_DIALOG (dialog), "ok", _("OK"));
 
-
-static void
-on_visible_child_changed (GObject       *sender,
-                          GParamSpec    *pspec,
-                          CuiDemoWindow *self)
-{
-  adw_leaflet_navigate (self->content_box, ADW_NAVIGATION_DIRECTION_FORWARD);
+  adw_dialog_present (dialog, GTK_WIDGET (self));
 }
 
 
@@ -179,20 +164,20 @@ cui_demo_window_class_init (CuiDemoWindowClass *klass)
 {
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (klass);
 
-  gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/CallUI/Demo/ui/cui-demo-window.ui");
+  gtk_widget_class_set_template_from_resource (widget_class, "/org/gnome/CallUI/Demo/cui-demo-window.ui");
+  gtk_widget_class_bind_template_child (widget_class, CuiDemoWindow, stack);
+  gtk_widget_class_bind_template_child (widget_class, CuiDemoWindow, split_view);
   gtk_widget_class_bind_template_child (widget_class, CuiDemoWindow, call_display);
   gtk_widget_class_bind_template_child (widget_class, CuiDemoWindow, dialpad);
   gtk_widget_class_bind_template_child (widget_class, CuiDemoWindow, keypad);
-  gtk_widget_class_bind_template_child (widget_class, CuiDemoWindow, content_box);
   gtk_widget_class_bind_template_child (widget_class, CuiDemoWindow, incoming_call);
   gtk_widget_class_bind_template_child (widget_class, CuiDemoWindow, outgoing_call);
   gtk_widget_class_bind_template_child (widget_class, CuiDemoWindow, theme_variant_image);
-  gtk_widget_class_bind_template_callback (widget_class, back_clicked_cb);
+  gtk_widget_class_bind_template_callback (widget_class, notify_visible_child_cb);
   gtk_widget_class_bind_template_callback (widget_class, key_pressed_cb);
   gtk_widget_class_bind_template_callback (widget_class, theme_variant_button_clicked_cb);
   gtk_widget_class_bind_template_callback (widget_class, on_new_call_clicked);
   gtk_widget_class_bind_template_callback (widget_class, on_dial);
-  gtk_widget_class_bind_template_callback (widget_class, on_visible_child_changed);
 }
 
 
@@ -218,7 +203,7 @@ cui_demo_window_init (CuiDemoWindow *self)
 }
 
 CuiDemoWindow *
-cui_demo_window_new (GtkApplication *application)
+cui_demo_window_new (AdwApplication *application)
 {
   return g_object_new (CUI_TYPE_DEMO_WINDOW, "application", application, NULL);
 }

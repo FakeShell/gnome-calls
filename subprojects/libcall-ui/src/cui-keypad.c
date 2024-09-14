@@ -20,7 +20,8 @@
  *
  * A keypad for dialing numbers
  *
- * The `CuiKeypad` widget is a keypad for entering numbers such as phone numbers or PIN codes.
+ * The `CuiKeypad` widget mimics a physical keypad
+ * for entering numbers such as phone numbers or PIN codes.
  */
 
 
@@ -442,6 +443,8 @@ cui_keypad_init (CuiKeypad *self)
   gtk_widget_init_template (GTK_WIDGET (self));
 
   gtk_widget_add_controller (GTK_WIDGET (self->btn_0), GTK_EVENT_CONTROLLER (gesture));
+
+  gtk_widget_set_direction (GTK_WIDGET (self->grid), GTK_TEXT_DIR_LTR);
 }
 
 
@@ -693,8 +696,7 @@ cui_keypad_get_entry (CuiKeypad *self)
  * @self: a #CuiKeypad
  * @start_action: (nullable): the start action widget
  *
- * Sets the widget for the lower left corner (or right, in RTL locales) of
- * @self.
+ * Sets the widget for the lower left corner of @self.
  */
 void
 cui_keypad_set_start_action (CuiKeypad *self,
@@ -724,8 +726,7 @@ cui_keypad_set_start_action (CuiKeypad *self,
  * cui_keypad_get_start_action:
  * @self: a #CuiKeypad
  *
- * Returns the widget for the lower left corner (or right, in RTL locales) of
- * @self.
+ * Returns the widget for the lower left corner @self.
  *
  * Returns: (transfer none) (nullable): the start action widget
  */
@@ -743,8 +744,7 @@ cui_keypad_get_start_action (CuiKeypad *self)
  * @self: a #CuiKeypad
  * @end_action: (nullable): the end action widget
  *
- * Sets the widget for the lower right corner (or left, in RTL locales) of
- * @self.
+ * Sets the widget for the lower right corner of @self.
  */
 void
 cui_keypad_set_end_action (CuiKeypad *self,
@@ -774,8 +774,7 @@ cui_keypad_set_end_action (CuiKeypad *self,
  * cui_keypad_get_end_action:
  * @self: a #CuiKeypad
  *
- * Returns the widget for the lower right corner (or left, in RTL locales) of
- * @self.
+ * Returns the widget for the lower right corner of @self.
  *
  * Returns: (transfer none) (nullable): the end action widget
  */

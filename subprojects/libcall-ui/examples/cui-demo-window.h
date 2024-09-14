@@ -9,6 +9,6 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (CuiDemoWindow, cui_demo_window, CUI, DEMO_WINDOW, AdwApplicationWindow)
 
-CuiDemoWindow *cui_demo_window_new (GtkApplication *application);
+CuiDemoWindow *cui_demo_window_new (AdwApplication *application);
 
 G_END_DECLS
