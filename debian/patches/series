@@ -1,4 +1,1 @@
 disable-flaky-sip-test.patch
-application-add-signal-for-main-window-hiding.patch
-contacts-box-clear-entry-if-window-is-closed.patch
-new-call-box-clear-number-entry-when-windows-is-closed.patch
