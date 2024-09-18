@@ -1,3 +1,15 @@
+gnome-calls (47.0-2) unstable; urgency=medium
+
+  * Team upload
+  * d/control: Depend on systemd-dev.
+    This allows meson to figure out the correct path for user units
+    (Closes: #1082105)
+  * install: Use less generic pattern for /usr/lib.
+    This makes sure we notice when e.g. plugins or systemd units
+    go missing.
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 18 Sep 2024 14:13:11 +0200
+
 gnome-calls (47.0-1) unstable; urgency=medium
 
   * New upstream release
