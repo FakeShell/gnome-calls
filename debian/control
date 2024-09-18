@@ -33,6 +33,7 @@ Build-Depends:
  modemmanager-dev,
  pkgconf,
  python3-docutils,
+ systemd-dev,
  valac,
  xauth <!nocheck>,
  xvfb <!nocheck>,
