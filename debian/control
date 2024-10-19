@@ -42,7 +42,6 @@ Homepage: https://gitlab.gnome.org/GNOME/calls
 Vcs-Browser: https://salsa.debian.org/DebianOnMobile-team/gnome-calls
 Vcs-Git: https://salsa.debian.org/DebianOnMobile-team/gnome-calls.git
 Rules-Requires-Root: no
-XS-FuriOS-Extra-Repos: deb http://furilabs-gtk4.repo.furios.io/trixie-upgrade-4-16-1/ trixie main | deb http://furilabs-callaudiod.repo.furios.io/trixie-upgrade-0-1-10/ trixie main
 
 Package: gnome-calls
 Architecture: any
